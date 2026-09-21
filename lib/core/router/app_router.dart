@@ -1,5 +1,10 @@
 import 'package:go_router/go_router.dart';
 import 'package:lavanderia_partner/core/router/bottom_nav_app.dart';
+import 'package:lavanderia_partner/features/auth/change_password/presentation/view/change_password_screen.dart';
+import 'package:lavanderia_partner/features/auth/forget_password/presentation/view/forget_password_screen.dart';
+import 'package:lavanderia_partner/features/auth/login/presentation/view/login_screen.dart';
+import 'package:lavanderia_partner/features/auth/otp/presentation/view/otp_screen.dart';
+import 'package:lavanderia_partner/features/auth/register/presentation/view/register_screen.dart';
 import 'package:lavanderia_partner/features/on_boarding/presentation/views/on_boarding_screen.dart';
 import 'package:lavanderia_partner/features/splash/presentation/view/splash_screen.dart';
 import 'package:lavanderia_partner/main.dart';
@@ -66,6 +71,21 @@ abstract class AppRouter {
         builder: (context, state) => const OnboardingScreen(),
       ),
 
+      // -----------------------------------Auth--------------------------------
+      GoRoute(path: login, builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: signUp,
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(path: verifyOtp, builder: (context, state) => const OtpScreen()),
+      GoRoute(
+        path: forgetPassword,
+        builder: (context, state) => const ForgetPasswordScreen(),
+      ),
+      GoRoute(
+        path: changePassword,
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
     ],
   );
 }

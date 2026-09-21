@@ -94,22 +94,34 @@ class HomeHeader extends StatelessWidget {
 class _LogoBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // اللوجو عرضه أكبر من طوله، فالبادج مستطيلة مش مربعة عشان يبان بحجم مناسب.
+    // والصورة نفسها حواليها هوامش شفافة، فبنقصها بـ OverflowBox عشان تملا البادج.
     return Container(
-      width: 54.w,
+      width: 104.w,
       height: 54.w,
-      padding: EdgeInsets.all(8.w),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.w),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
-      child: Image.asset(
-        Assets.assetsImagesLogo,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Icon(
-          Icons.local_laundry_service_outlined,
-          color: Colors.white,
-          size: 26.sp,
+      child: ClipRect(
+        child: OverflowBox(
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          child: SizedBox(
+            width: 84.w,
+            height: 84.w,
+            child: Image.asset(
+              Assets.assetsImagesLogo,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.local_laundry_service_outlined,
+                color: Colors.white,
+                size: 26.sp,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -145,7 +157,7 @@ class _AvailabilityCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isAvailable
                             ? AppColors.greenColor
-                            : AppColors.greyColor5,
+                            : AppColors.redColor2,
                         shape: BoxShape.circle,
                       ),
                     ),

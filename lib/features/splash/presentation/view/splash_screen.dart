@@ -48,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
           } else if (state == 'onboarding') {
             GoRouter.of(context).pushReplacement(AppRouter.onboarding);
           } else if (state == 'login') {
-            GoRouter.of(context).pushReplacement(AppRouter.initialRoot);
+            GoRouter.of(context).pushReplacement(AppRouter.login);
           }
         },
         child: Scaffold(
