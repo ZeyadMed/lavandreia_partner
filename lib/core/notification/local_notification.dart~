@@ -1,0 +1,631 @@
+import 'dart:developer';
+import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+
+import '../helpers/logger.dart';
+
+// Ensure this is a top-level function
+@pragma('vm:entry-point')
+void backgroundNotificationHandler(NotificationResponse response) {
+  receiveNotification(response);
+}
+
+@pragma('vm:entry-point')
+Future<void> backgroundFCMNotificationHandler(RemoteMessage message) async {
+  receiveFCMNotification(message);
+}
+
+Future<void> _showNotification(RemoteMessage message) async {
+  String? title = message.notification?.title ?? message.data['title'];
+  String? body = message.notification?.body ?? message.data['body'];
+
+  NotificationDetails platformChannelSpecifics = Platform.isIOS
+      ? const NotificationDetails(
+          iOS: DarwinNotificationDetails(),
+        )
+      : const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'high_importance_channel',
+            'high_importance_channel',
+            //like github or google push notifications
+            fullScreenIntent: true,
+            channelDescription:
+                'This channel is used for important notifications.',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: false,
+          ),
+        );
+
+  await LocalNotificationServiceImpl().flutterLocalNotificationsPlugin.show(
+        message.messageId.hashCode,
+        title,
+        body,
+        platformChannelSpecifics,
+      );
+}
+
+void receiveFCMNotification(RemoteMessage message) {
+  logger('Notification tapped or action clicked');
+  final String? payload = message.data['payload'];
+  final String? title = message.data['title'];
+  final String? body = message.data['body'];
+  final String? actionId = message.data['actionId'];
+  final int id = message.messageId.hashCode;
+
+  if (payload != null) {
+    logger('Notification tapped with payload: $payload');
+  }
+
+  if (actionId != null) {
+    logger('Action clicked with ID: $actionId');
+    switch (actionId) {
+      case '1': // Send action
+        logger('SEND action triggered');
+        // Perform the action you want when "Send" is tapped
+        handleSendAction(id, title, body);
+        break;
+      case '2': // Abort action
+        logger('ABORT action triggered');
+        // Perform the action you want when "Abort" is tapped
+        handleAbortAction(id, title, body);
+        break;
+      default:
+        logger('Unknown action ID: $actionId');
+        break;
+    }
+  }
+}
+
+void handleSendAction(int id, String? title, String? body) {
+  // Logic for when the "Send" action is tapped
+  logger('Handling SEND action');
+  // Example: Show another notification or perform some operation
+  LocalNotificationServiceImpl().showCallbackNotification(
+    id: id,
+    title: title ?? "Empty Title",
+    body: body ?? "Empty Body",
+    actions: [
+      NotificationAction(id: id.toString(), title: title ?? 'Another Action'),
+    ],
+  );
+}
+
+void handleAbortAction(int id, String? title, String? body) {
+  // Logic for when the "Abort" action is tapped
+  logger('Handling ABORT action');
+  // Example: Cancel the notification or perform some other operation
+  LocalNotificationServiceImpl().cancelNotification(id);
+}
+
+void receiveNotification(NotificationResponse response) {
+  logger('Notification tapped or action clicked');
+  final String? payload = response.payload;
+  final String? actionId = response.actionId;
+
+  if (payload != null) {
+    logger('Notification tapped with payload: $payload');
+  }
+
+  if (actionId != null) {
+    logger('Action clicked with ID: $actionId');
+    switch (actionId) {
+      case '1':
+        logger('SEND action triggered');
+        break;
+      case '2':
+        logger('ABORT action triggered');
+        break;
+    }
+  }
+}
+
+abstract class LocalNotificationConsumer {
+  // Initialize the notification service
+  Future<void> initialize();
+
+  // Show a simple notification
+  Future<void> showSimpleNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  });
+
+  // Show a progress notification (e.g., for downloads)
+  Future<void> showProgressNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+    String? payload,
+  });
+
+  // Update progress of an existing progress notification
+  Future<void> updateProgressNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+    String? payload,
+  });
+
+  // Show a notification with actions (e.g., buttons like WhatsApp)
+  Future<void> showCallbackNotification({
+    required int id,
+    required String title,
+    required String body,
+    required List<NotificationAction> actions,
+    String? payload,
+  });
+
+  // Schedule a notification for a specific time
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  });
+
+  // Create a notification channel (Android only)
+  Future<void> createNotificationChannel({
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
+    Importance importance = Importance.high,
+    Priority priority = Priority.high,
+    bool enableVibration = true,
+    bool playSound = true,
+  });
+
+  // Show a notification with a custom icon
+  Future<void> showNotificationWithCustomIcon({
+    required int id,
+    required String title,
+    required String body,
+    required String iconPath,
+    String? payload,
+  });
+
+  // Show a notification with custom sound
+  Future<void> showNotificationWithSound({
+    required int id,
+    required String title,
+    required String body,
+    required String sound,
+    String? payload,
+  });
+
+  // Show a grouped notification
+  Future<void> showGroupedNotification({
+    required int id,
+    required String groupKey,
+    required String title,
+    required String body,
+    String? payload,
+  });
+
+  // Cancel a notification by ID
+  Future<void> cancelNotification(int id);
+
+  // Cancel all notifications
+  Future<void> cancelAllNotifications();
+
+  // Clear grouped notifications
+  Future<void> clearGroupedNotifications(String groupKey);
+}
+
+class LocalNotificationServiceImpl implements LocalNotificationConsumer {
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin =>
+      _flutterLocalNotificationsPlugin;
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+
+  @override
+  Future<void> initialize() async {
+    // Initialize Firebase
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+    // Initialize local notifications
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      // Add iOS settings if needed
+    );
+
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveBackgroundNotificationResponse: backgroundNotificationHandler,
+      onDidReceiveNotificationResponse: receiveNotification,
+    );
+
+    // Initialize Firebase Messaging
+    await _initializeFirebaseMessaging();
+  }
+
+  Future<void> _initializeFirebaseMessaging() async {
+    try {
+      // Request notification permissions
+      NotificationSettings settings =
+          await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // Subscribe to a topic
+      await _subscribeToTopic('notifications');
+
+      // Set foreground notification presentation options
+      _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // Get and log the FCM token
+        String? token = await _firebaseMessaging.getToken();
+        log("Firebase Messaging Token: $token");
+
+        // Listen for messages received in the foreground
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          log('Received a message in foreground!');
+          if (message.notification != null) {
+            log('Notification Title: ${message.notification!.title}');
+            log('Notification Body: ${message.notification!.body}');
+            showSimpleNotification(
+              id: message.messageId!.hashCode,
+              title: message.notification!.title!,
+              body: message.notification!.body!,
+              payload: message.data['payload'],
+            );
+          }
+        });
+
+        // Listen for messages opened from the background
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          log('Notification opened from background!');
+          showSimpleNotification(
+            id: message.messageId!.hashCode,
+            title: message.data['title'],
+            body: message.data['body'],
+            payload: message.data['payload'],
+          );
+        });
+      } else {
+        log("User declined notifications permission");
+      }
+
+      // Set up background message handler
+      FirebaseMessaging.onBackgroundMessage(backgroundFCMNotificationHandler);
+    } catch (e) {
+      log("Error initializing Firebase Messaging: $e");
+    }
+  }
+
+  Future<void> _subscribeToTopic(String topic) async {
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+      loggerError('Subscribed to topic: $topic');
+    } catch (e) {
+      loggerError('Failed to subscribe to topic $topic: $e');
+    }
+  }
+
+  // Implement all methods from LocalNotificationConsumer
+  @override
+  Future<void> showSimpleNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'your_channel_id',
+      'your_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> showProgressNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'progress_channel_id',
+      'progress_channel_name',
+      channelShowBadge: false,
+      importance: Importance.max,
+      priority: Priority.high,
+      onlyAlertOnce: true,
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress,
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> updateProgressNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'progress_channel_id',
+      'progress_channel_name',
+      channelShowBadge: false,
+      importance: Importance.max,
+      priority: Priority.high,
+      onlyAlertOnce: true,
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress,
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> showCallbackNotification({
+    required int id,
+    required String title,
+    required String body,
+    required List<NotificationAction> actions,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'callback_channel_id',
+      'callback_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      actions: actions.map((action) => action.toAndroidAction()).toList(),
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'scheduled_channel_id',
+      'scheduled_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    final tz.TZDateTime scheduledTZDate =
+        tz.TZDateTime.from(scheduledDate, tz.local);
+
+    await _flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledTZDate,
+      platformChannelSpecifics,
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> createNotificationChannel({
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
+    Importance importance = Importance.high,
+    Priority priority = Priority.high,
+    bool enableVibration = true,
+    bool playSound = true,
+  }) async {
+    final AndroidNotificationChannel channel = AndroidNotificationChannel(
+      channelId,
+      channelName,
+      description: channelDescription,
+      importance: importance,
+      enableVibration: enableVibration,
+      playSound: playSound,
+    );
+
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  }
+
+  @override
+  Future<void> showNotificationWithCustomIcon({
+    required int id,
+    required String title,
+    required String body,
+    required String iconPath,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'custom_icon_channel_id',
+      'custom_icon_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+      largeIcon: FilePathAndroidBitmap(iconPath),
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> showNotificationWithSound({
+    required int id,
+    required String title,
+    required String body,
+    required String sound,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'sound_channel_id',
+      'sound_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound(sound),
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> showGroupedNotification({
+    required int id,
+    required String groupKey,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'grouped_channel_id',
+      'grouped_channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+      groupKey: groupKey,
+      setAsGroupSummary: true,
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> cancelNotification(int id) async {
+    await _flutterLocalNotificationsPlugin.cancel(id);
+  }
+
+  @override
+  Future<void> cancelAllNotifications() async {
+    await _flutterLocalNotificationsPlugin.cancelAll();
+  }
+
+  @override
+  Future<void> clearGroupedNotifications(String groupKey) async {
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.deleteNotificationChannelGroup(groupKey);
+  }
+}
+
+class NotificationAction {
+  final String id;
+  final String title;
+
+  NotificationAction({
+    required this.id,
+    required this.title,
+  });
+
+  AndroidNotificationAction toAndroidAction() {
+    return AndroidNotificationAction(
+      id,
+      title,
+    );
+  }
+}
