@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:lavanderia_partner/core/common_widget/custom_error_message.dart';
+import 'package:lavanderia_partner/core/router/bottom_nav_controller.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
@@ -26,7 +27,12 @@ class _BottomNavAppState extends State<BottomNavApp> {
   /// الترتيب زي الديزاين: الرئيسية - الطلبات - الخدمات - حسابي
   /// وفي العربي الصف بيتقلب لوحده فالرئيسية بتظهر على اليمين
   final List<_BottomNavItemData> _items = const [
-    _BottomNavItemData(labelKey: 'home', icon: Icons.home_outlined),
+    // النقطة الحمراء على الرئيسية معناها فيه طلبات جديدة مستنية رد
+    _BottomNavItemData(
+      labelKey: 'home',
+      icon: Icons.home_outlined,
+      hasBadge: true,
+    ),
     _BottomNavItemData(labelKey: 'my_orders', icon: Icons.task_alt_outlined),
     _BottomNavItemData(labelKey: 'services', icon: Icons.wb_sunny_outlined),
     _BottomNavItemData(labelKey: 'profile', icon: Icons.person_outline_rounded),
@@ -38,6 +44,19 @@ class _BottomNavAppState extends State<BottomNavApp> {
     super.initState();
     // Only load home page initially
     _getPage(0);
+    // عشان شاشة زي الرئيسية تقدر تنقل لتاب الطلبات من "عرض الكل"
+    BottomNavController.instance.addListener(_onExternalTabRequest);
+  }
+
+  @override
+  void dispose() {
+    BottomNavController.instance.removeListener(_onExternalTabRequest);
+    super.dispose();
+  }
+
+  void _onExternalTabRequest() {
+    final index = BottomNavController.instance.value;
+    if (index != _selectedIndex) _onItemTapped(index);
   }
 
   Widget _getPage(int index) {
@@ -72,13 +91,13 @@ class _BottomNavAppState extends State<BottomNavApp> {
       _selectedIndex = index;
       _getPage(index);
     });
+    // بنحدث الكنترولر كمان عشان قيمته تفضل مطابقة للتاب الظاهر
+    BottomNavController.instance.value = index;
   }
 
   Future<bool> _onWillPop() async {
     if (_selectedIndex != 0) {
-      setState(() {
-        _selectedIndex = 0;
-      });
+      _onItemTapped(BottomNavTab.home);
       return false;
     } else {
       final now = DateTime.now();
