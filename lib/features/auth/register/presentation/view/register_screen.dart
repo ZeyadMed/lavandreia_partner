@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/extensions/context_extension.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
+import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/laundry_info_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/location_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/review_step.dart';
@@ -35,6 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// الخطوة الحالية بادئة من 1
   int _currentStep = 1;
 
+  bool _isSubmitting = false;
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -52,6 +58,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// زرار الرجوع: بيرجع خطوة، ومن أول خطوة بيخرج لشاشة الدخول
   void _back() {
+    // مانرجعش وسط الريكوست عشان النتيجة ماترجعش على شاشة مقفولة
+    if (_isSubmitting) return;
     if (_currentStep > 1) {
       _goToStep(_currentStep - 1);
       return;
@@ -59,9 +67,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
     context.go(AppRouter.login);
   }
 
-  void _submit() {
-    // TODO: ربط الـ API — الداتا جاهزة في _data.toJson()
-    context.go(AppRouter.verifyOtp);
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    final result = await getIt<RegisterDataSource>().register(_data);
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    result.fold(
+      (failure) {
+        // الـ ApiConsumer بيعرض بنفسه أخطاء الاتصال والـ validation،
+        // فبنعرض هنا بس رسالة السيرفر العادية عشان ماتظهرش مرتين
+        if (failure is ServerFailure || failure is UnknownFailure) {
+          context.showErrorMessage(failure.message);
+        }
+      },
+      // push مش go عشان زرار الرجوع في شاشة الكود يرجّع للمراجعة
+      (_) => context.push(AppRouter.verifyOtp, extra: _data.laundryPhone),
+    );
   }
 
   @override
@@ -127,6 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           data: _data,
           onSubmit: _submit,
           onEditStep: _goToStep,
+          isSubmitting: _isSubmitting,
         );
     }
   }

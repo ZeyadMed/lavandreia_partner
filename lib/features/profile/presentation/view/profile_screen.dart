@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/models/laundry_profile.dart';
 import 'package:lavanderia_partner/features/profile/data/profile_mock_data.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/edit_laundry_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/legal_page_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/support_screen.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view/working_hours_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/logout_dialog.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_header.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_widgets.dart';
@@ -46,9 +49,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirmed = await showLogoutDialog(context);
     if (confirmed != true || !mounted) return;
 
-    // بنمسح التوكنز الأول عشان أي ريكوست بعد كده مايعديش
-    await CacheManager.clearTokens();
+    // الريكوست بيمسح التوكنز بنفسه حتى لو فشل، فبنكمل للوجين في الحالتين
+    context.showLoadingDialog(message: 'logging_out');
+    await getIt<LoginDataSource>().logout();
     if (!mounted) return;
+    Navigator.of(context).pop();
 
     // go بدل push عشان اليوزر مايقدرش يرجع للتطبيق بزرار الرجوع
     context.go(AppRouter.login);
@@ -120,6 +125,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: _openEdit,
         ),
         ProfileMenuTile(
+          icon: Icons.access_time,
+          labelKey: 'working_hours',
+          onTap: () => _open(const WorkingHoursScreen()),
+        ),
+        ProfileMenuTile(
           icon: Icons.headset_mic_outlined,
           labelKey: 'support_and_help',
           onTap: () => _open(const SupportScreen()),
@@ -163,12 +173,6 @@ class _LogoutButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.logout_rounded,
-              size: 19.sp,
-              color: AppColors.redColor2,
-            ),
-            Gap(10.w),
             LocalizedLabel(
               text: 'logout',
               style: TextStyles.boldStyle(
@@ -177,6 +181,8 @@ class _LogoutButton extends StatelessWidget {
                 weight: FontWeight.w700,
               ),
             ),
+            Gap(10.w),
+            Icon(Icons.logout_rounded, size: 19.sp, color: AppColors.redColor2),
           ],
         ),
       ),

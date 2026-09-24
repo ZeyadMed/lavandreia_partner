@@ -79,7 +79,12 @@ abstract class AppRouter {
         path: signUp,
         builder: (context, state) => const RegisterScreen(),
       ),
-      GoRoute(path: verifyOtp, builder: (context, state) => const OtpScreen()),
+      GoRoute(
+        path: verifyOtp,
+        // الرقم بييجي من التسجيل بس، ومن نسيت كلمة المرور بيبقى null
+        builder: (context, state) =>
+            OtpScreen(phoneNumber: state.extra as String?),
+      ),
       GoRoute(
         path: forgetPassword,
         builder: (context, state) => const ForgetPasswordScreen(),

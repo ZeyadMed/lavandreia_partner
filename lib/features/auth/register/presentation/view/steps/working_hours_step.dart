@@ -8,6 +8,7 @@ import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/time_picker_sheet.dart';
+import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/working_day_card.dart';
 
 /// الخطوة التالتة: مواعيد العمل لكل يوم في الأسبوع
 /// كل يوم له سويتش "مغلق"، ولو مفتوح بيحدد من ساعة لساعة
@@ -22,17 +23,6 @@ class WorkingHoursStep extends StatefulWidget {
 }
 
 class _WorkingHoursStepState extends State<WorkingHoursStep> {
-  /// أيام الأسبوع بترتيب التقويم العربي، السبت أول يوم
-  static const List<String> _weekDays = [
-    'saturday',
-    'sunday',
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-  ];
-
   /// الأوقات الافتراضية لما اليوزر يبدأ يحدد، 9 ص لـ 10 م
   static const _defaultOpen = DateTimeRangePart(hour: 9, minute: 0);
   static const _defaultClose = DateTimeRangePart(hour: 22, minute: 0);
@@ -48,17 +38,8 @@ class _WorkingHoursStepState extends State<WorkingHoursStep> {
     _days = widget.data.workingDays.isNotEmpty
         // بنرجّع اللي اتحدد قبل كده لو اليوزر رجع خطوة لورا
         // بنسخ مش بالمرجع، عشان التعديل مايتحفظش غير لما الفاليديشن يعدي
-        ? widget.data.workingDays
-              .map(
-                (day) => WorkingDay(
-                  key: day.key,
-                  isClosed: day.isClosed,
-                  openTime: day.openTime,
-                  closeTime: day.closeTime,
-                ),
-              )
-              .toList()
-        : _weekDays
+        ? widget.data.workingDays.map((day) => day.copy()).toList()
+        : WorkingDay.weekDays
               .map(
                 (key) => WorkingDay(
                   key: key,
@@ -150,148 +131,19 @@ class _WorkingHoursStepState extends State<WorkingHoursStep> {
         ),
         Gap(16.h),
 
-        ..._days.map(_buildDayCard),
+        ..._days.map(
+          (day) => WorkingDayCard(
+            day: day,
+            hasError: _invalidDays.contains(day.key),
+            onClosedChanged: (value) => _toggleClosed(day, value),
+            onPickOpenTime: () => _pickTime(day, isOpenTime: true),
+            onPickCloseTime: () => _pickTime(day, isOpenTime: false),
+          ),
+        ),
 
         Gap(20.h),
         CustomButton(onPressed: _submit, title: 'next'.tr()),
       ],
-    );
-  }
-
-  Widget _buildDayCard(WorkingDay day) {
-    final hasError = _invalidDays.contains(day.key);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: 10.h),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: day.isClosed
-              ? Colors.grey.withValues(alpha: 0.06)
-              : AppColors.whiteColor,
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-            color: hasError
-                ? AppColors.redColor
-                : day.isClosed
-                ? Colors.grey.withValues(alpha: 0.25)
-                : AppColors.primaryColor.withValues(alpha: 0.35),
-            width: hasError ? 1.4 : 0.9,
-          ),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: LocalizedLabel(
-                    text: day.key,
-                    style: TextStyles.blackBold16.copyWith(
-                      color: day.isClosed
-                          ? AppColors.greyColor3
-                          : AppColors.darkTextColor,
-                    ),
-                  ),
-                ),
-                LocalizedLabel(
-                  text: 'closed',
-                  style: TextStyles.darkRegular14.copyWith(
-                    color: day.isClosed
-                        ? AppColors.redColor
-                        : AppColors.greyColor4,
-                  ),
-                ),
-                Gap(4.w),
-                Switch(
-                  value: day.isClosed,
-                  activeThumbColor: AppColors.redColor,
-                  onChanged: (value) => _toggleClosed(day, value),
-                ),
-              ],
-            ),
-            // الساعات بتختفي خالص لما اليوم يبقى مقفول
-            if (!day.isClosed) ...[
-              Gap(6.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TimeBox(
-                      labelKey: 'from',
-                      time: day.openTime,
-                      onTap: () => _pickTime(day, isOpenTime: true),
-                    ),
-                  ),
-                  Gap(10.w),
-                  Expanded(
-                    child: _TimeBox(
-                      labelKey: 'to',
-                      time: day.closeTime,
-                      onTap: () => _pickTime(day, isOpenTime: false),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// خانة الوقت الواحدة: "من" أو "إلى" وتحتها الساعة المختارة
-class _TimeBox extends StatelessWidget {
-  final String labelKey;
-  final DateTimeRangePart? time;
-  final VoidCallback onTap;
-
-  const _TimeBox({
-    required this.labelKey,
-    required this.time,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: AppColors.secondaryColor,
-          borderRadius: BorderRadius.circular(10.r),
-          border: const Border.fromBorderSide(
-            BorderSide(color: Colors.grey, width: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.access_time,
-              size: 16.sp,
-              color: AppColors.primaryColor,
-            ),
-            Gap(6.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LocalizedLabel(
-                    text: labelKey,
-                    style: TextStyles.darkRegular12.copyWith(
-                      color: AppColors.greyColor3,
-                    ),
-                  ),
-                  Label(
-                    text: time?.toLocalizedString() ?? '--:--',
-                    style: TextStyles.darkBold14,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

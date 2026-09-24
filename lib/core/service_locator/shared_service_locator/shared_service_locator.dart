@@ -4,11 +4,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:lavanderia_partner/core/helpers/generic_data_source.dart';
 import 'package:lavanderia_partner/core/helpers/location_service.dart';
 import 'package:lavanderia_partner/core/http/api_consumer.dart';
 import 'package:lavanderia_partner/core/http/auth_interceptor.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
 import 'package:lavanderia_partner/core/http/token_refresh_service.dart';
+import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
+import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
+import 'package:lavanderia_partner/features/profile/data/working_hours_data_source.dart';
+import 'package:lavanderia_partner/features/services/data/laundry_services_data_source.dart';
 // import 'package:lavanderia_partner/features/home/presentation/view_model/location_controller.dart';
 // import 'package:lavanderia_partner/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
@@ -72,6 +77,26 @@ class SharedServiceLocator {
     );
 
     getIt.registerLazySingleton<LocationService>(() => LocationService());
+
+    getIt.registerLazySingleton<GenericDataSource>(
+      () => GenericDataSource(getIt<ApiConsumer>()),
+    );
+
+    getIt.registerLazySingleton<LoginDataSource>(
+      () => LoginDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<RegisterDataSource>(
+      () => RegisterDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<LaundryServicesDataSource>(
+      () => LaundryServicesDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<WorkingHoursDataSource>(
+      () => WorkingHoursDataSource(getIt<GenericDataSource>()),
+    );
 
     // singleton مش lazy عشان العنوان يفضل محفوظ ويتشارك بين الشاشات
     // فأي شاشة تانية (زي تأكيد الطلب) تقرا نفس العنوان من غير ما تجيبه تاني

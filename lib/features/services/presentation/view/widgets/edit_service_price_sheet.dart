@@ -7,26 +7,29 @@ import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
-import 'package:lavanderia_partner/features/services/data/models/laundry_service.dart';
+import 'package:lavanderia_partner/features/services/data/models/my_service_item.dart';
 
-/// بوتوم شيت تعديل سعر خدمة واحدة
-/// بيرجّع السعر الجديد كـ String، أو null لو اتقفل من غير تأكيد
-Future<String?> showEditServicePriceSheet({
+/// بوتوم شيت تعديل سعر صنف واحد
+/// بيرجّع السعر الجديد، أو null لو اتقفل من غير تأكيد
+Future<double?> showEditServicePriceSheet({
   required BuildContext context,
-  required LaundryService service,
+  required MyServiceItem item,
+  required double currentPrice,
 }) {
-  return showModalBottomSheet<String>(
+  return showModalBottomSheet<double>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => _EditServicePriceSheet(service: service),
+    builder: (_) =>
+        _EditServicePriceSheet(item: item, currentPrice: currentPrice),
   );
 }
 
 class _EditServicePriceSheet extends StatefulWidget {
-  final LaundryService service;
+  final MyServiceItem item;
+  final double currentPrice;
 
-  const _EditServicePriceSheet({required this.service});
+  const _EditServicePriceSheet({required this.item, required this.currentPrice});
 
   @override
   State<_EditServicePriceSheet> createState() => _EditServicePriceSheetState();
@@ -34,7 +37,7 @@ class _EditServicePriceSheet extends StatefulWidget {
 
 class _EditServicePriceSheetState extends State<_EditServicePriceSheet> {
   late final TextEditingController _controller = TextEditingController(
-    text: widget.service.price,
+    text: formatPrice(widget.currentPrice),
   );
 
   /// بيتعلّم بالأحمر لو اليوزر حاول يحفظ سعر فاضي أو صفر
@@ -47,8 +50,8 @@ class _EditServicePriceSheetState extends State<_EditServicePriceSheet> {
   }
 
   void _submit() {
-    final price = _controller.text.trim();
-    if ((double.tryParse(price) ?? 0) <= 0) {
+    final price = double.tryParse(_controller.text.trim()) ?? 0;
+    if (price <= 0) {
       setState(() => _hasError = true);
       return;
     }
@@ -93,21 +96,12 @@ class _EditServicePriceSheetState extends State<_EditServicePriceSheet> {
               style: TextStyles.boldStyle(18, weight: FontWeight.w800),
             ),
             Gap(6.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Label(
-                  text: widget.service.emoji,
-                  style: TextStyle(fontSize: 16.sp),
-                ),
-                Gap(6.w),
-                LocalizedLabel(
-                  text: widget.service.labelKey,
-                  style: TextStyles.darkRegular14.copyWith(
-                    color: AppColors.greyColor3,
-                  ),
-                ),
-              ],
+            Label(
+              text: '${widget.item.serviceItemName} - ${widget.item.serviceName}',
+              textAlign: TextAlign.center,
+              style: TextStyles.darkRegular14.copyWith(
+                color: AppColors.greyColor3,
+              ),
             ),
             Gap(20.h),
             _PriceField(
@@ -179,7 +173,7 @@ class _PriceField extends StatelessWidget {
         filled: true,
         fillColor: AppColors.filledColor,
         contentPadding: EdgeInsets.symmetric(vertical: 16.h),
-        suffixText: 'currency_sar'.tr(),
+        suffixText: 'currency'.tr(),
         suffixStyle: TextStyles.darkBold14,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),

@@ -24,7 +24,7 @@ abstract final class ApiConsumer {
 
   Future<Either<Failure, Map<String, dynamic>>> post(
     String url, {
-    Map<String, dynamic>? data,
+    Object? data,
     FormData? formData,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
@@ -242,7 +242,7 @@ final class BaseApiConsumer implements ApiConsumer {
   @override
   Future<Either<Failure, Map<String, dynamic>>> post(
     String url, {
-    Map<String, dynamic>? data,
+    Object? data,
     FormData? formData,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,

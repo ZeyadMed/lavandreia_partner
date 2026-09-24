@@ -12,7 +12,7 @@ import 'package:lavanderia_partner/features/auth/register/data/models/register_d
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/laundry_cover_picker.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/register_section_card.dart';
 
-/// الخطوة الأولى: اسم المغسلة والمسؤول والتواصل وكلمة المرور
+/// الخطوة الأولى: صورة المغسلة واسمها ورقمها، والمسؤول ورقمه، وكلمة المرور
 class LaundryInfoStep extends StatefulWidget {
   final RegisterData data;
 
@@ -29,17 +29,19 @@ class _LaundryInfoStepState extends State<LaundryInfoStep> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _laundryNameController;
+  late final TextEditingController _laundryPhoneController;
   late final TextEditingController _ownerNameController;
-  late final TextEditingController _phoneController;
-  late final TextEditingController _emailController;
+  late final TextEditingController _ownerPhoneController;
   late final TextEditingController _passwordController;
   late final TextEditingController _confirmPasswordController;
 
-  /// الرقم كامل بكود الدولة، بيتحدث من onChanged بتاع الحقل
-  String _completePhone = '';
+  /// الأرقام كاملة بكود الدولة، بتتحدث من onChanged بتاع كل حقل
+  String _laundryPhone = '';
+  String _ownerPhone = '';
 
-  /// الرقم من غير الكود، بيتخزن عشان ترجيع الحقل لو اليوزر رجع للخطوة
-  String _localPhone = '';
+  /// الأرقام من غير الكود، بتتخزن عشان ترجيع الحقول لو اليوزر رجع للخطوة
+  String _laundryPhoneLocal = '';
+  String _ownerPhoneLocal = '';
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -55,31 +57,32 @@ class _LaundryInfoStepState extends State<LaundryInfoStep> {
     final data = widget.data;
     _laundryNameController = TextEditingController(text: data.laundryName);
     _ownerNameController = TextEditingController(text: data.ownerName);
-    // الحقل بيترجّع بالرقم المحلي عشان اليوزر يلاقي رقمه لما يرجع للخطوة
-    _phoneController = TextEditingController(text: data.ownerPhoneLocal);
-    _emailController = TextEditingController(text: data.email);
+    // حقول الأرقام بتترجّع بالرقم المحلي عشان اليوزر يلاقي رقمه لما يرجع للخطوة
+    _laundryPhoneController = TextEditingController(
+      text: data.laundryPhoneLocal,
+    );
+    _ownerPhoneController = TextEditingController(text: data.ownerPhoneLocal);
     _passwordController = TextEditingController(text: data.password);
     _confirmPasswordController = TextEditingController(text: data.password);
-    _completePhone = data.ownerPhone;
-    _localPhone = data.ownerPhoneLocal;
+    _laundryPhone = data.laundryPhone;
+    _laundryPhoneLocal = data.laundryPhoneLocal;
+    _ownerPhone = data.ownerPhone;
+    _ownerPhoneLocal = data.ownerPhoneLocal;
   }
 
   @override
   void dispose() {
     _laundryNameController.dispose();
+    _laundryPhoneController.dispose();
     _ownerNameController.dispose();
-    _phoneController.dispose();
-    _emailController.dispose();
+    _ownerPhoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  /// البريد اختياري: فاضي يعدي، ومكتوب لازم يبقى صحيح
-  String? _optionalEmailValidator(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
-    return Validators.emailValidator(value);
-  }
+  String? _phoneValidator(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'phoneNumberEmpty'.tr() : null;
 
   void _submit() {
     final formValid = _formKey.currentState!.validate();
@@ -92,15 +95,20 @@ class _LaundryInfoStepState extends State<LaundryInfoStep> {
 
     // لو اليوزر رجع للخطوة وماغيّرش الرقم، onChanged مابيتنديش
     // فبنعتمد على اللي كان متخزن بدل ما نبعت رقم فاضي
-    final typed = _phoneController.text.trim();
-    if (typed != _localPhone) _localPhone = typed;
+    final typedLaundryPhone = _laundryPhoneController.text.trim();
+    if (typedLaundryPhone != _laundryPhoneLocal) {
+      _laundryPhoneLocal = typedLaundryPhone;
+    }
+    final typedOwnerPhone = _ownerPhoneController.text.trim();
+    if (typedOwnerPhone != _ownerPhoneLocal) _ownerPhoneLocal = typedOwnerPhone;
 
     final data = widget.data;
     data.laundryName = _laundryNameController.text.trim();
+    data.laundryPhone = _laundryPhone;
+    data.laundryPhoneLocal = _laundryPhoneLocal;
     data.ownerName = _ownerNameController.text.trim();
-    data.ownerPhone = _completePhone;
-    data.ownerPhoneLocal = _localPhone;
-    data.email = _emailController.text.trim();
+    data.ownerPhone = _ownerPhone;
+    data.ownerPhoneLocal = _ownerPhoneLocal;
     data.password = _passwordController.text;
 
     widget.onNext();
@@ -138,6 +146,18 @@ class _LaundryInfoStepState extends State<LaundryInfoStep> {
                 ),
                 Gap(14.h),
 
+                _FieldLabel(labelKey: 'laundry_phone'),
+                Gap(8.h),
+                CustomPhoneField(
+                  controller: _laundryPhoneController,
+                  onChanged: (phone) {
+                    _laundryPhone = phone.completeNumber;
+                    _laundryPhoneLocal = phone.number;
+                  },
+                  validator: _phoneValidator,
+                ),
+                Gap(14.h),
+
                 Customtextfield(
                   labelText: 'owner_name',
                   hintText: 'full_name',
@@ -147,27 +167,15 @@ class _LaundryInfoStepState extends State<LaundryInfoStep> {
                 ),
                 Gap(14.h),
 
-                _FieldLabel(labelKey: 'phone_number'),
+                _FieldLabel(labelKey: 'owner_phone'),
                 Gap(8.h),
                 CustomPhoneField(
-                  controller: _phoneController,
+                  controller: _ownerPhoneController,
                   onChanged: (phone) {
-                    _completePhone = phone.completeNumber;
-                    _localPhone = phone.number;
+                    _ownerPhone = phone.completeNumber;
+                    _ownerPhoneLocal = phone.number;
                   },
-                  validator: (value) => (value == null || value.trim().isEmpty)
-                      ? 'phoneNumberEmpty'.tr()
-                      : null,
-                ),
-                Gap(14.h),
-
-                Customtextfield(
-                  // اختياري، والليبل بيوضح كده لليوزر
-                  labelText: 'email_optional',
-                  hintText: 'example@email.com',
-                  textEditingController: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _optionalEmailValidator,
+                  validator: _phoneValidator,
                 ),
                 Gap(14.h),
 

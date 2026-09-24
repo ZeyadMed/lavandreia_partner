@@ -1,151 +1,402 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
+import 'package:lavanderia_partner/core/extensions/context_extension.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
-import 'package:lavanderia_partner/features/services/data/models/laundry_service.dart';
-import 'package:lavanderia_partner/features/services/data/services_mock_data.dart';
-import 'package:lavanderia_partner/features/services/presentation/view/widgets/add_service_sheet.dart';
+import 'package:lavanderia_partner/features/services/data/laundry_services_data_source.dart';
+import 'package:lavanderia_partner/features/services/data/models/my_service_item.dart';
+import 'package:lavanderia_partner/features/services/data/models/service_category.dart';
+import 'package:lavanderia_partner/features/services/presentation/view/widgets/delete_services_dialog.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/edit_service_price_sheet.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/service_card.dart';
+import 'package:lavanderia_partner/features/services/presentation/view/widgets/services_skeleton.dart';
+import 'package:lavanderia_partner/features/services/presentation/view_model/services_cubits.dart';
 
-class ServicesScreen extends StatefulWidget {
+/// صفحة خدمات المغسلة: الأصناف بأسعارها متجمعة تحت كل خدمة
+/// تعديل السعر بيفضل محلي لحد ما اليوزر يضغط حفظ (PUT)
+/// والضغط المطوّل على صنف بيفتح وضع التحديد للحذف (DELETE)
+class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
 
   @override
-  State<ServicesScreen> createState() => _ServicesScreenState();
+  Widget build(BuildContext context) {
+    final dataSource = getIt<LaundryServicesDataSource>();
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => MyServicesCubit(dataSource)..fetchData()),
+        BlocProvider(create: (_) => UpdateMyServicesCubit(dataSource)),
+        BlocProvider(create: (_) => DeleteMyServicesCubit(dataSource)),
+      ],
+      child: const _ServicesView(),
+    );
+  }
 }
 
-class _ServicesScreenState extends State<ServicesScreen> {
-  /// مؤقتاً من الداتا الوهمية لحد ما نربط الـ API
-  final List<LaundryService> _services = ServicesMockData.all;
+class _ServicesView extends StatefulWidget {
+  const _ServicesView();
 
-  /// نسخة من آخر حالة محفوظة، بنقارن بيها عشان نعرف
-  /// إذا كان فيه تعديلات لسه متبعتتش للسيرفر
-  late List<LaundryService> _savedSnapshot = _services
-      .map((service) => service.copy())
-      .toList();
+  @override
+  State<_ServicesView> createState() => _ServicesViewState();
+}
 
-  bool _isSaving = false;
+class _ServicesViewState extends State<_ServicesView> {
+  /// الأسعار اللي اتعدّلت ولسه متبعتتش، بالـ serviceItemId
+  final Map<int, double> _editedPrices = {};
 
-  /// فيه تعديل لو العدد اتغير أو أي خدمة سعرها/حالتها اتغيرت
-  bool get _hasChanges {
-    if (_services.length != _savedSnapshot.length) return true;
-    for (var i = 0; i < _services.length; i++) {
-      if (!_services[i].isSameAs(_savedSnapshot[i])) return true;
+  /// الأصناف المحددة للحذف بالـ serviceItemId
+  final Set<int> _selectedIds = {};
+  bool _isSelectionMode = false;
+
+  double _priceOf(MyServiceItem item) =>
+      _editedPrices[item.serviceItemId] ?? item.price;
+
+  Future<void> _editPrice(MyServiceItem item) async {
+    final price = await showEditServicePriceSheet(
+      context: context,
+      item: item,
+      currentPrice: _priceOf(item),
+    );
+    if (price == null || !mounted) return;
+
+    setState(() {
+      // لو رجع للسعر الأصلي يبقى مفيش تعديل أصلاً
+      if (price == item.price) {
+        _editedPrices.remove(item.serviceItemId);
+      } else {
+        _editedPrices[item.serviceItemId] = price;
+      }
+    });
+  }
+
+  void _save() {
+    context.read<UpdateMyServicesCubit>().submit([
+      for (final entry in _editedPrices.entries)
+        ServiceItemPrice(serviceItemId: entry.key, price: entry.value),
+    ]);
+  }
+
+  void _startSelection(MyServiceItem item) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIds.add(item.serviceItemId);
+    });
+  }
+
+  void _toggleSelection(int serviceItemId) {
+    setState(() {
+      if (!_selectedIds.remove(serviceItemId)) _selectedIds.add(serviceItemId);
+    });
+  }
+
+  /// لو كل أصناف الخدمة متحددة بيلغيها، غير كده بيحددها كلها
+  void _toggleGroup(List<MyServiceItem> items) {
+    final ids = items.map((item) => item.serviceItemId);
+    setState(() {
+      if (ids.every(_selectedIds.contains)) {
+        _selectedIds.removeAll(ids);
+      } else {
+        _selectedIds.addAll(ids);
+      }
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+    final confirmed = await showDeleteServicesDialog(
+      context,
+      _selectedIds.length,
+    );
+    if (confirmed != true || !mounted) return;
+
+    context.read<DeleteMyServicesCubit>().submit(_selectedIds.toList());
+  }
+
+  void _onUpdateStateChanged(
+    BuildContext context,
+    BaseState<List<ServiceItemPrice>> state,
+  ) {
+    if (state.isSuccess) {
+      context.read<MyServicesCubit>().applyPrices(state.data ?? []);
+      setState(_editedPrices.clear);
+      context.showSuccessMessage('services_saved'.tr());
+      return;
     }
-    return false;
+    _showServerError(context, state.isFailure, state.failure);
   }
 
-  int get _activeCount =>
-      _services.where((service) => service.isActive).length;
-
-  Future<void> _editPrice(LaundryService service) async {
-    final price = await showEditServicePriceSheet(
-      context: context,
-      service: service,
-    );
-    if (price == null || !mounted) return;
-
-    setState(() => service.price = price);
+  void _onDeleteStateChanged(BuildContext context, BaseState<List<int>> state) {
+    if (state.isSuccess) {
+      final deletedIds = state.data ?? [];
+      context.read<MyServicesCubit>().removeItems(deletedIds);
+      // التعديلات بتاعة الأصناف اللي اتحذفت ملهاش لازمة
+      _editedPrices.removeWhere((id, _) => deletedIds.contains(id));
+      _exitSelection();
+      context.showSuccessMessage('services_deleted'.tr());
+      return;
+    }
+    _showServerError(context, state.isFailure, state.failure);
   }
 
-  Future<void> _addService() async {
-    final option = await showAddServiceSheet(
-      context: context,
-      existingIds: _services.map((service) => service.id).toSet(),
-    );
-    if (option == null || !mounted) return;
-
-    // الخدمة الجديدة لازم يتحدّدلها سعر قبل ما تتضاف
-    final added = LaundryService(
-      id: option.id,
-      labelKey: option.labelKey,
-      emoji: option.emoji,
-      price: '',
-    );
-    final price = await showEditServicePriceSheet(
-      context: context,
-      service: added,
-    );
-    if (price == null || !mounted) return;
-
-    setState(() {
-      added.price = price;
-      _services.add(added);
-    });
-  }
-
-  Future<void> _save() async {
-    if (_isSaving) return;
-
-    setState(() => _isSaving = true);
-    // مؤقتاً تأخير بسيط بدل نداء الـ API
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-      _savedSnapshot = _services.map((service) => service.copy()).toList();
-    });
-    _showMessage('services_saved', AppColors.greenColor);
-  }
-
-  void _showMessage(String messageKey, Color background) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: LocalizedLabel(text: messageKey, style: TextStyles.whiteBold14),
-        backgroundColor: background,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  /// أخطاء الاتصال والـ validation الـ ApiConsumer بيعرضها بنفسه
+  void _showServerError(
+    BuildContext context,
+    bool isFailure,
+    Failure? failure,
+  ) {
+    if (isFailure && (failure is ServerFailure || failure is UnknownFailure)) {
+      context.showErrorMessage(failure!.message);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
-      body: Column(
-        children: [
-          _ServicesHeader(activeCount: _activeCount),
-          Expanded(
-            child: ListView.separated(
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-              // آخر عنصر هو زرار الإضافة المنقّط
-              itemCount: _services.length + 1,
-              separatorBuilder: (_, _) => Gap(12.h),
-              itemBuilder: (context, index) {
-                if (index == _services.length) {
-                  return _AddServiceButton(onTap: _addService);
-                }
-
-                final service = _services[index];
-                return ServiceCard(
-                  service: service,
-                  onEdit: () => _editPrice(service),
-                  onActiveChanged: (value) =>
-                      setState(() => service.isActive = value),
-                );
-              },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<UpdateMyServicesCubit, BaseState<List<ServiceItemPrice>>>(
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: _onUpdateStateChanged,
+        ),
+        BlocListener<DeleteMyServicesCubit, BaseState<List<int>>>(
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: _onDeleteStateChanged,
+        ),
+      ],
+      // زرار الرجوع بيقفل وضع التحديد الأول قبل ما يخرج من الصفحة
+      child: PopScope(
+        canPop: !_isSelectionMode,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _exitSelection();
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.semiWhiteColor3,
+          body: BlocBuilder<MyServicesCubit, BaseState<MyServiceItem>>(
+            builder: (context, state) => Column(
+              children: [
+                _isSelectionMode
+                    ? _SelectionHeader(
+                        selectedCount: _selectedIds.length,
+                        onClose: _exitSelection,
+                        onDelete: _deleteSelected,
+                      )
+                    : _ServicesHeader(itemsCount: state.items.length),
+                Expanded(child: _buildBody(context, state)),
+                // شريط الحفظ بيظهر بس لما يكون فيه تعديلات، ومش في وضع التحديد
+                if (_editedPrices.isNotEmpty && !_isSelectionMode)
+                  BlocBuilder<
+                    UpdateMyServicesCubit,
+                    BaseState<List<ServiceItemPrice>>
+                  >(
+                    builder: (context, updateState) => _SaveBar(
+                      isSaving: updateState.isLoading,
+                      onSave: _save,
+                    ),
+                  ),
+              ],
             ),
           ),
-          // شريط الحفظ بيظهر بس لما يكون فيه تعديلات
-          if (_hasChanges)
-            _SaveBar(isSaving: _isSaving, onSave: _save),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, BaseState<MyServiceItem> state) {
+    final cubit = context.read<MyServicesCubit>();
+    if (state.isFailure && state.items.isEmpty) {
+      return _RetryMessage(onRetry: cubit.fetchData);
+    }
+    if (!state.isSuccess) {
+      return const ServicesSkeleton();
+    }
+
+    final groups = _groupByService(state.items);
+    return RefreshIndicator(
+      color: AppColors.primaryColor,
+      onRefresh: cubit.fetchData,
+      child: groups.isEmpty
+          ? ListView(
+              // لازم يبقى scrollable عشان السحب للتحديث يشتغل
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                Gap(120.h),
+                LocalizedLabel(
+                  text: 'no_my_services',
+                  textAlign: TextAlign.center,
+                  style: TextStyles.darkRegular14.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+              itemCount: groups.length,
+              itemBuilder: (context, index) => _buildGroup(groups[index]),
+            ),
+    );
+  }
+
+  Widget _buildGroup(_ServiceGroup group) {
+    final allSelected = group.items.every(
+      (item) => _selectedIds.contains(item.serviceItemId),
+    );
+    return Padding(
+      padding: EdgeInsets.only(bottom: 18.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _GroupHeader(
+            name: group.serviceName,
+            count: group.items.length,
+            isSelectionMode: _isSelectionMode,
+            allSelected: allSelected,
+            onToggleAll: () => _toggleGroup(group.items),
+          ),
+          Gap(10.h),
+          for (final item in group.items) ...[
+            ServiceCard(
+              key: ValueKey(item.serviceItemId),
+              item: item,
+              price: _priceOf(item),
+              isEdited: _editedPrices.containsKey(item.serviceItemId),
+              isSelectionMode: _isSelectionMode,
+              isSelected: _selectedIds.contains(item.serviceItemId),
+              onEdit: () => _editPrice(item),
+              onTap: _isSelectionMode
+                  ? () => _toggleSelection(item.serviceItemId)
+                  : () => _editPrice(item),
+              onLongPress: () => _isSelectionMode
+                  ? _toggleSelection(item.serviceItemId)
+                  : _startSelection(item),
+            ),
+            Gap(10.h),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// الريسبونس لستة واحدة، فبنجمّعها بالخدمة بنفس ترتيب أول ظهور ليها
+  List<_ServiceGroup> _groupByService(List<MyServiceItem> items) {
+    final groups = <int, _ServiceGroup>{};
+    for (final item in items) {
+      groups
+          .putIfAbsent(
+            item.serviceId,
+            () => _ServiceGroup(serviceName: item.serviceName),
+          )
+          .items
+          .add(item);
+    }
+    return groups.values.toList();
+  }
+}
+
+class _ServiceGroup {
+  final String serviceName;
+  final List<MyServiceItem> items = [];
+
+  _ServiceGroup({required this.serviceName});
+}
+
+/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف
+class _ServicesHeader extends StatelessWidget {
+  final int itemsCount;
+
+  const _ServicesHeader({required this.itemsCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return _HeaderContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LocalizedLabel(
+            text: 'services',
+            style: TextStyles.whiteText(22, weight: FontWeight.w800),
+          ),
+          Gap(4.h),
+          Label(
+            text: 'service_items_count'.tr(args: [itemsCount.toString()]),
+            style: TextStyles.whiteText(
+              13,
+              weight: FontWeight.w400,
+            ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
+          ),
         ],
       ),
     );
   }
 }
 
-/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الخدمات النشطة
-class _ServicesHeader extends StatelessWidget {
-  final int activeCount;
+/// الهيدر في وضع التحديد: قفل وعدد المحدد وزرار الحذف
+class _SelectionHeader extends StatelessWidget {
+  final int selectedCount;
+  final VoidCallback onClose;
+  final VoidCallback onDelete;
 
-  const _ServicesHeader({required this.activeCount});
+  const _SelectionHeader({
+    required this.selectedCount,
+    required this.onClose,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _HeaderContainer(
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, color: AppColors.whiteColor),
+          ),
+          Gap(4.w),
+          Expanded(
+            child: Label(
+              text: 'selected_count'.tr(args: [selectedCount.toString()]),
+              style: TextStyles.whiteText(18, weight: FontWeight.w800),
+            ),
+          ),
+          BlocBuilder<DeleteMyServicesCubit, BaseState<List<int>>>(
+            builder: (context, state) => state.isLoading
+                ? const LoadingButton(color: AppColors.whiteColor)
+                : IconButton(
+                    onPressed: selectedCount == 0 ? null : onDelete,
+                    tooltip: 'delete'.tr(),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: selectedCount == 0
+                          ? Colors.white.withValues(alpha: 0.4)
+                          : AppColors.whiteColor,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderContainer extends StatelessWidget {
+  final Widget child;
+
+  const _HeaderContainer({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -164,114 +415,87 @@ class _ServicesHeader extends StatelessWidget {
           colors: [Color(0xff4A7FE8), AppColors.primaryColor],
         ),
       ),
+      child: child,
+    );
+  }
+}
+
+/// اسم الخدمة فوق أصنافها، وفي وضع التحديد بيبقى فيه زرار تحديد الكل
+class _GroupHeader extends StatelessWidget {
+  final String name;
+  final int count;
+  final bool isSelectionMode;
+  final bool allSelected;
+  final VoidCallback onToggleAll;
+
+  const _GroupHeader({
+    required this.name,
+    required this.count,
+    required this.isSelectionMode,
+    required this.allSelected,
+    required this.onToggleAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Label(
+            text: '$name ($count)',
+            maxLines: 1,
+            style: TextStyles.boldStyle(16, weight: FontWeight.w800),
+          ),
+        ),
+        if (isSelectionMode)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onToggleAll,
+            child: LocalizedLabel(
+              text: allSelected ? 'deselect_all' : 'select_all',
+              style: TextStyles.boldStyle(
+                13,
+                color: AppColors.primaryColor,
+                weight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// رسالة فشل تحميل بزرار إعادة المحاولة
+class _RetryMessage extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RetryMessage({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           LocalizedLabel(
-            text: 'services',
-            style: TextStyles.whiteText(22, weight: FontWeight.w800),
+            text: 'services_load_failed',
+            textAlign: TextAlign.center,
+            style: TextStyles.darkRegular14.copyWith(color: AppColors.redColor),
           ),
-          Gap(4.h),
-          Label(
-            text: 'active_services_count'.tr(args: [activeCount.toString()]),
-            style: TextStyles.whiteText(
-              13,
-              weight: FontWeight.w400,
-            ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, color: AppColors.primaryColor),
+            label: LocalizedLabel(
+              text: 'try_again',
+              style: TextStyles.darkBold14.copyWith(
+                color: AppColors.primaryColor,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-/// الزرار المنقّط اللي تحت الليستة
-class _AddServiceButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddServiceButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: DottedBorderBox(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add, size: 18.sp, color: AppColors.primaryColor),
-            Gap(8.w),
-            LocalizedLabel(
-              text: 'add_service',
-              style: TextStyles.boldStyle(
-                15,
-                color: AppColors.primaryColor,
-                weight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// إطار منقّط، مرسوم بـ CustomPainter عشان منضيفش باكدج جديد للمشروع
-class DottedBorderBox extends StatelessWidget {
-  final Widget child;
-
-  const DottedBorderBox({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(radius: 16.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 14.w),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  final double radius;
-
-  const _DashedBorderPainter({required this.radius});
-
-  static const double _dashWidth = 6;
-  static const double _dashGap = 4;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.primaryColor.withValues(alpha: 0.5)
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Offset.zero & size,
-          Radius.circular(radius),
-        ),
-      );
-
-    // بنمشي على حدود المسار ونرسم شرطة وبعدها فراغ لحد ما نلف الإطار كله
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final end = (distance + _dashWidth).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(distance, end), paint);
-        distance = end + _dashGap;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
-      oldDelegate.radius != radius;
 }
 
 /// شريط الحفظ اللي بيطلع من تحت لما يكون فيه تعديلات متحفظتش

@@ -3,19 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
-import 'package:lavanderia_partner/core/helpers/validators.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
-import 'package:lavanderia_partner/core/widget/custom_phone_field.dart';
-import 'package:lavanderia_partner/core/widget/custom_text_field.dart';
-import 'package:lavanderia_partner/features/auth/register/data/locations_data_source.dart';
-import 'package:lavanderia_partner/features/auth/register/data/models/country_model.dart';
+import 'package:lavanderia_partner/features/auth/register/data/models/city_model.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
+import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/map_picker_screen.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/register_section_card.dart';
 
-/// الخطوة التانية: الدولة والمدينة والمنطقة ورقم المغسلة وتحديد الموقع
+/// الخطوة التانية: المدينة وتحديد الموقع على الخريطة
 class LocationStep extends StatefulWidget {
   final RegisterData data;
   final VoidCallback onNext;
@@ -27,24 +25,18 @@ class LocationStep extends StatefulWidget {
 }
 
 class _LocationStepState extends State<LocationStep> {
-  final _formKey = GlobalKey<FormState>();
-  final LocationsDataSource _locationsSource = const StaticLocationsDataSource();
+  /// المدن كلها في ليبيا، فبنحصر البحث على الخريطة فيها
+  static const String _countryCode = 'LY';
 
-  late final TextEditingController _areaController;
-  late final TextEditingController _phoneController;
-
-  String _completePhone = '';
-
-  /// الرقم من غير الكود، بيتخزن عشان ترجيع الحقل لو اليوزر رجع للخطوة
-  String _localPhone = '';
+  final RegisterDataSource _dataSource = getIt<RegisterDataSource>();
 
   /// بيتحط بعد محاولة حفظ فاشلة عشان تحذير الدروب داون يظهر
-  bool _showDropdownErrors = false;
+  bool _showCityError = false;
 
-  List<CountryModel> _countries = [];
-  CountryModel? _selectedCountry;
+  List<CityModel> _cities = [];
   CityModel? _selectedCity;
-  bool _isLoadingCountries = true;
+  bool _isLoadingCities = true;
+  bool _citiesFailed = false;
 
   /// بيتحط بعد أول محاولة حفظ فاشلة عشان تحذير الخريطة يظهر
   /// من غير ما يبان لليوزر من أول لحظة
@@ -53,63 +45,32 @@ class _LocationStepState extends State<LocationStep> {
   @override
   void initState() {
     super.initState();
-    _areaController = TextEditingController(text: widget.data.areaName);
-    // الحقل بيترجّع بالرقم المحلي عشان اليوزر يلاقي رقمه لما يرجع للخطوة
-    _phoneController = TextEditingController(text: widget.data.laundryPhoneLocal);
-    _completePhone = widget.data.laundryPhone;
-    _localPhone = widget.data.laundryPhoneLocal;
-    _loadCountries();
+    _loadCities();
   }
 
-  @override
-  void dispose() {
-    _areaController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
+  Future<void> _loadCities() async {
+    setState(() {
+      _isLoadingCities = true;
+      _citiesFailed = false;
+    });
 
-  Future<void> _loadCountries() async {
-    final countries = await _locationsSource.getCountries();
+    final result = await _dataSource.getCities();
     if (!mounted) return;
 
-    setState(() {
-      _countries = countries;
-      _isLoadingCountries = false;
-      // بنرجّع اللي اليوزر كان مختاره لو رجع خطوة لورا
-      _restoreSelection();
-    });
-  }
-
-  void _restoreSelection() {
-    final data = widget.data;
-    if (data.countryId == null) return;
-
-    for (final country in _countries) {
-      if (country.id != data.countryId) continue;
-      _selectedCountry = country;
-
-      for (final city in country.cities) {
-        if (city.id == data.cityId) _selectedCity = city;
-      }
-      return;
-    }
-  }
-
-  void _onCountryChanged(CountryModel? country) {
-    setState(() {
-      _selectedCountry = country;
-      // المدينة القديمة مش بتنتمي للدولة الجديدة فلازم تتصفّر
-      _selectedCity = null;
-      _clearDropdownErrorIfResolved();
-    });
-  }
-
-  /// بيخفي تحذير الدروب داون أول ما الاتنين يتحددوا
-  void _clearDropdownErrorIfResolved() {
-    if (!_showDropdownErrors) return;
-    if (_selectedCountry != null && _selectedCity != null) {
-      _showDropdownErrors = false;
-    }
+    result.fold(
+      (_) => setState(() {
+        _isLoadingCities = false;
+        _citiesFailed = true;
+      }),
+      (cities) => setState(() {
+        _cities = cities;
+        _isLoadingCities = false;
+        // بنرجّع اللي اليوزر كان مختاره لو رجع خطوة لورا
+        _selectedCity = cities
+            .where((city) => city.id == widget.data.cityId)
+            .firstOrNull;
+      }),
+    );
   }
 
   Future<void> _openMapPicker() async {
@@ -118,7 +79,7 @@ class _LocationStepState extends State<LocationStep> {
         builder: (_) => MapPickerScreen(
           initialLatitude: widget.data.latitude,
           initialLongitude: widget.data.longitude,
-          countryCode: _selectedCountry?.isoCode,
+          countryCode: _countryCode,
         ),
       ),
     );
@@ -134,153 +95,99 @@ class _LocationStepState extends State<LocationStep> {
   }
 
   void _submit() {
-    final formValid = _formKey.currentState!.validate();
     final mapValid = widget.data.hasLocationOnMap;
-    // الدروب داون بره الـ Form فبنتحقق منه بإيدينا
-    final dropdownsValid = _selectedCountry != null && _selectedCity != null;
+    final cityValid = _selectedCity != null;
 
     // بنعرض كل الأخطاء مع بعض بدل ما اليوزر يصلح واحد ويكتشف التاني
-    if (!mapValid || !dropdownsValid) {
+    if (!mapValid || !cityValid) {
       setState(() {
         _showMapError = !mapValid;
-        _showDropdownErrors = !dropdownsValid;
+        _showCityError = !cityValid;
       });
+      return;
     }
-    if (!formValid || !mapValid || !dropdownsValid) return;
-
-    // لو اليوزر رجع للخطوة وماغيّرش الرقم، onChanged مابيتنديش
-    final typed = _phoneController.text.trim();
-    if (typed != _localPhone) _localPhone = typed;
 
     final data = widget.data;
-    data.countryId = _selectedCountry!.id;
-    data.countryName = _selectedCountry!.nameFor(context.locale.languageCode);
     data.cityId = _selectedCity!.id;
-    data.cityName = _selectedCity!.nameFor(context.locale.languageCode);
-    data.areaName = _areaController.text.trim();
-    data.laundryPhone = _completePhone;
-    data.laundryPhoneLocal = _localPhone;
+    data.cityName = _selectedCity!.name;
 
     widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          RegisterSectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _FieldLabel(labelKey: 'country'),
-                Gap(8.h),
-                _buildCountryDropdown(),
-                Gap(14.h),
-
-                _FieldLabel(labelKey: 'city'),
-                Gap(8.h),
-                _buildCityDropdown(),
-                Gap(14.h),
-
-                Customtextfield(
-                  labelText: 'area_name',
-                  hintText: 'area_name_hint',
-                  textEditingController: _areaController,
-                  keyboardType: TextInputType.text,
-                  validator: Validators.validateEmpty,
-                ),
-                Gap(14.h),
-
-                _FieldLabel(labelKey: 'laundry_phone'),
-                Gap(8.h),
-                CustomPhoneField(
-                  controller: _phoneController,
-                  onChanged: (phone) {
-                    _completePhone = phone.completeNumber;
-                    _localPhone = phone.number;
-                  },
-                  validator: (value) => (value == null || value.trim().isEmpty)
-                      ? 'phoneNumberEmpty'.tr()
-                      : null,
-                ),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RegisterSectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _FieldLabel(labelKey: 'city'),
+              Gap(8.h),
+              _buildCityDropdown(),
+            ],
           ),
-          Gap(16.h),
-
-          _buildMapCard(),
-          Gap(20.h),
-
-          CustomButton(onPressed: _submit, title: 'next'.tr()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCountryDropdown() {
-    if (_isLoadingCountries) return const _DropdownPlaceholder();
-
-    return _DropdownShell(
-      hasError: _showDropdownErrors && _selectedCountry == null,
-      child: DropdownButton<CountryModel>(
-        isExpanded: true,
-        value: _selectedCountry,
-        hint: LocalizedLabel(
-          text: 'select_country',
-          style: TextStyles.darkRegular16.copyWith(color: AppColors.greyColor3),
         ),
-        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-        items: _countries
-            .map(
-              (country) => DropdownMenuItem(
-                value: country,
-                child: Label(
-                  text: country.nameFor(context.locale.languageCode),
-                  style: TextStyles.darkRegular16,
-                ),
-              ),
-            )
-            .toList(),
-        onChanged: _onCountryChanged,
-      ),
+        Gap(16.h),
+
+        _buildMapCard(),
+        Gap(20.h),
+
+        CustomButton(onPressed: _submit, title: 'next'.tr()),
+      ],
     );
   }
 
   Widget _buildCityDropdown() {
-    final cities = _selectedCountry?.cities ?? const <CityModel>[];
+    if (_isLoadingCities) return const _DropdownPlaceholder();
+
+    if (_citiesFailed) {
+      return _DropdownShell(
+        child: InkWell(
+          onTap: _loadCities,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 14.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: LocalizedLabel(
+                    text: 'cities_load_failed',
+                    style: TextStyles.darkRegular16.copyWith(
+                      color: AppColors.redColor,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.refresh, color: AppColors.primaryColor),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return _DropdownShell(
-      hasError: _showDropdownErrors && _selectedCity == null,
+      hasError: _showCityError && _selectedCity == null,
       child: DropdownButton<CityModel>(
         isExpanded: true,
         value: _selectedCity,
         hint: LocalizedLabel(
-          // الهينت بيوضح إن لازم الدولة الأول
-          text: _selectedCountry == null ? 'select_country_first' : 'select_city',
+          text: 'select_city',
           style: TextStyles.darkRegular16.copyWith(color: AppColors.greyColor3),
         ),
         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-        items: cities
+        items: _cities
             .map(
               (city) => DropdownMenuItem(
                 value: city,
-                child: Label(
-                  text: city.nameFor(context.locale.languageCode),
-                  style: TextStyles.darkRegular16,
-                ),
+                child: Label(text: city.name, style: TextStyles.darkRegular16),
               ),
             )
             .toList(),
-        // مقفول لحد ما دولة تتحدد
-        onChanged: cities.isEmpty
-            ? null
-            : (city) => setState(() {
-                _selectedCity = city;
-                _clearDropdownErrorIfResolved();
-              }),
+        onChanged: (city) => setState(() {
+          _selectedCity = city;
+          _showCityError = false;
+        }),
       ),
     );
   }
@@ -416,7 +323,7 @@ class _DropdownShell extends StatelessWidget {
   }
 }
 
-/// بيتعرض وقت تحميل الدول عشان الشكل مايقفزش لما اللستة توصل
+/// بيتعرض وقت تحميل المدن عشان الشكل مايقفزش لما اللستة توصل
 class _DropdownPlaceholder extends StatelessWidget {
   const _DropdownPlaceholder();
 

@@ -6,16 +6,24 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/common_widget/otp_text_field.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/style/assets.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
+import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key});
+  /// رقم المغسلة اللي اتسجل، موجود في flow التسجيل بس
+  /// لو null يبقى جايين من نسيت كلمة المرور
+  final String? phoneNumber;
+
+  const OtpScreen({super.key, this.phoneNumber});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -28,6 +36,8 @@ class _OtpScreenState extends State<OtpScreen> {
   int _secondsRemaining = 0;
   bool _canResend = true;
   Timer? _timer;
+
+  bool _isVerifying = false;
 
   @override
   void dispose() {
@@ -54,6 +64,50 @@ class _OtpScreenState extends State<OtpScreen> {
         setState(() => _secondsRemaining--);
       }
     });
+  }
+
+  Future<void> _verify() async {
+    final phoneNumber = widget.phoneNumber;
+    // flow نسيت كلمة المرور لسه مش مربوط، فبيكمل زي ما كان
+    if (phoneNumber == null) {
+      context.go(AppRouter.changePassword);
+      return;
+    }
+
+    final code = _pinController.text.trim();
+    if (code.length < 5) {
+      context.showErrorMessage('otp_incomplete'.tr());
+      return;
+    }
+
+    if (_isVerifying) return;
+    setState(() => _isVerifying = true);
+
+    final result = await getIt<RegisterDataSource>().verifyPhone(
+      phoneNumber: phoneNumber,
+      code: code,
+    );
+    if (!mounted) return;
+    setState(() => _isVerifying = false);
+
+    result.fold(
+      (failure) {
+        // الكود الغلط بيرجع ServerFailure برسالة السيرفر، والـ ApiConsumer
+        // مبيعرضهاش، أما أخطاء الاتصال فهو اللي بيعرضها
+        if (failure is ServerFailure || failure is UnknownFailure) {
+          context.showErrorMessage(failure.message);
+        }
+      },
+      (loggedIn) {
+        if (loggedIn) {
+          // أول دخول للمغسلة، فبيروح يعدّ الخدمات قبل الرئيسية
+          context.go(AppRouter.setupServices);
+          return;
+        }
+        context.showSuccessMessage('phone_verified_login'.tr());
+        context.go(AppRouter.login);
+      },
+    );
   }
 
   String get _formattedTime {
@@ -134,12 +188,9 @@ class _OtpScreenState extends State<OtpScreen> {
             Gap(30.h),
 
             // Verify Button
-            CustomButton(
-              onPressed: () {
-                context.go(AppRouter.changePassword);
-              },
-              title: "verify_otp".tr(),
-            ),
+            _isVerifying
+                ? const LoadingButton()
+                : CustomButton(onPressed: _verify, title: "verify_otp".tr()),
 
             Gap(20.h),
 

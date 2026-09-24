@@ -41,7 +41,7 @@ class _OtpTextFieldState extends State<OtpTextField> {
           Directionality(
             textDirection: ui.TextDirection.ltr,
             child: Pinput(
-              length: 5,
+              length: 6,
               controller: widget.pinController,
               defaultPinTheme: defaultPinTheme,
               hapticFeedbackType: HapticFeedbackType.lightImpact,

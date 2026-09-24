@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
@@ -17,6 +18,9 @@ class ReviewStep extends StatelessWidget {
   /// بيتنادى لما اليوزر يضغط "إنشاء حساب"
   final VoidCallback onSubmit;
 
+  /// الزرار بيتقفل ويعرض لودينج لحد ما الريكوست يخلص
+  final bool isSubmitting;
+
   /// بيرجّع اليوزر لخطوة معينة (بادئة من 1) لما يضغط تعديل
   final void Function(int step) onEditStep;
 
@@ -25,6 +29,7 @@ class ReviewStep extends StatelessWidget {
     required this.data,
     required this.onSubmit,
     required this.onEditStep,
+    this.isSubmitting = false,
   });
 
   @override
@@ -38,7 +43,9 @@ class ReviewStep extends StatelessWidget {
         Gap(14.h),
         _buildWorkingHours(),
         Gap(22.h),
-        CustomButton(onPressed: onSubmit, title: 'sign_up'.tr()),
+        isSubmitting
+            ? const Center(child: LoadingButton())
+            : CustomButton(onPressed: onSubmit, title: 'sign_up'.tr()),
       ],
     );
   }
@@ -66,12 +73,11 @@ class ReviewStep extends StatelessWidget {
             Gap(6.h),
           ],
           ReviewRow(labelKey: 'laundry_name', value: data.laundryName),
+          ReviewRow(labelKey: 'laundry_phone', value: data.laundryPhone),
           ReviewRow(labelKey: 'owner_name', value: data.ownerName),
-          ReviewRow(labelKey: 'phone_number', value: data.ownerPhone),
           ReviewRow(
-            labelKey: 'email',
-            // البريد اختياري فممكن يفضل فاضي
-            value: data.email.isEmpty ? '—' : data.email,
+            labelKey: 'owner_phone',
+            value: data.ownerPhone,
             showDivider: false,
           ),
         ],
@@ -80,20 +86,12 @@ class ReviewStep extends StatelessWidget {
   }
 
   Widget _buildLocation() {
-    // الدولة والمدينة والمنطقة في سطر واحد زي ما اليوزر بيقراهم
-    final parts = [
-      data.countryName,
-      data.cityName,
-      data.areaName,
-    ].where((part) => part != null && part.isNotEmpty).join('، ');
-
     return _SectionWithEdit(
       titleKey: 'location',
       onEdit: () => onEditStep(2),
       child: Column(
         children: [
-          ReviewRow(labelKey: 'address', value: parts),
-          ReviewRow(labelKey: 'laundry_phone', value: data.laundryPhone),
+          ReviewRow(labelKey: 'city', value: data.cityName ?? '—'),
           if (data.pickedAddress?.isNotEmpty == true)
             ReviewRow(
               labelKey: 'map_address',

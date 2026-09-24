@@ -5,14 +5,19 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
+import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/helpers/validators.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/assets.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/core/widget/custom_phone_field.dart';
 import 'package:lavanderia_partner/core/widget/custom_text_field.dart';
 import 'package:lavanderia_partner/core/widget/flexiable_image.dart';
+import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 
 import '../../../../../core/style/app_colors.dart';
 
@@ -32,12 +37,45 @@ class _LoginScreenState extends State<LoginScreen> {
   String completePhone = '';
   bool obscureText = true;
   final _formKey = GlobalKey<FormState>();
+  bool _isLoggingIn = false;
 
   @override
   void dispose() {
     phoneController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    // الانتقال جوه الشرط عشان الفورم الغلط مايعديش
+    if (!_formKey.currentState!.validate() || _isLoggingIn) return;
+    setState(() => _isLoggingIn = true);
+
+    final result = await getIt<LoginDataSource>().login(
+      phoneNumber: completePhone,
+      password: passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _isLoggingIn = false);
+
+    result.fold(
+      (failure) {
+        // الـ ApiConsumer بيعرض أخطاء الاتصال بنفسه، فبنعرض رسالة السيرفر بس
+        if (failure is ServerFailure ||
+            failure is UnknownFailure ||
+            failure is ParsingFailure) {
+          context.showErrorMessage(failure.message);
+        }
+      },
+      (_) {
+        // أول دخول بيروح لإعداد الخدمات، وبعد كده للرئيسية على طول
+        context.go(
+          CacheManager.hasCompletedServicesSetup()
+              ? AppRouter.initialRoot
+              : AppRouter.setupServices,
+        );
+      },
+    );
   }
 
   @override
@@ -116,21 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Gap(30.h),
 
               // Sign In Button
-              CustomButton(
-                onPressed: () {
-                  // الانتقال جوه الشرط عشان الفورم الغلط مايعديش
-                  if (_formKey.currentState!.validate()) {
-                    // TODO: Handle login logic
-                    // أول دخول بيروح لإعداد الخدمات، وبعد كده للرئيسية على طول
-                    context.go(
-                      CacheManager.hasCompletedServicesSetup()
-                          ? AppRouter.initialRoot
-                          : AppRouter.setupServices,
-                    );
-                  }
-                },
-                title: "sign_in".tr(),
-              ),
+              _isLoggingIn
+                  ? const Center(child: LoadingButton())
+                  : CustomButton(onPressed: _login, title: "sign_in".tr()),
               Gap(20.h),
               // DividerWidget(text: "or".tr()),
               // Gap(20.h),

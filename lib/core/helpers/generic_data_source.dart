@@ -179,9 +179,10 @@ class GenericDataSource {
     );
   }
 
+  /// الـ data بتقبل Map أو List، فيه endpoints زي my-services بتستقبل لستة
   Future<Either<Failure, T>> postData<T>({
     required String endpoint,
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
   }) async {
@@ -197,7 +198,8 @@ class GenericDataSource {
         logger('GenericDataSource.postData raw right: $right');
         try {
           if (T == Null) {
-            return Right(right as T);
+            // الـ cast بتاع الماب لـ Null كان بيرمي exception فالنجاح بيرجع فشل
+            return Right(null as T);
           } else if (T == String) {
             logger('right: $right');
             return Right(right['result'] ?? "" as T);
@@ -317,13 +319,16 @@ class GenericDataSource {
     return processed;
   }
 
+  /// الـ data للـ endpoints اللي بتستقبل body في الحذف زي my-services
   Future<Either<Failure, T>> deleteData<T>({
     required String endpoint,
+    Map<String, dynamic>? data,
     Map<String, dynamic>? queryParameters,
     Map<String, dynamic>? headers,
   }) async {
     final result = await _apiConsumer.delete(
       endpoint,
+      data: data,
       queryParameters: queryParameters,
       headers: headers,
     );
