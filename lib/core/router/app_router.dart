@@ -6,6 +6,7 @@ import 'package:lavanderia_partner/features/auth/login/presentation/view/login_s
 import 'package:lavanderia_partner/features/auth/otp/presentation/view/otp_screen.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/register_screen.dart';
 import 'package:lavanderia_partner/features/on_boarding/presentation/views/on_boarding_screen.dart';
+import 'package:lavanderia_partner/features/services/presentation/view/setup_services_screen.dart';
 import 'package:lavanderia_partner/features/splash/presentation/view/splash_screen.dart';
 import 'package:lavanderia_partner/main.dart';
 
@@ -18,6 +19,7 @@ abstract class AppRouter {
   static const String forgetPassword = '/forgetPassword';
   static const String verifyOtp = '/verifyOtp';
   static const String changePassword = '/changePassword';
+  static const String setupServices = '/setupServices';
   static const String resetPasswordScreen = '/resetPasswordScreen';
   static const String successScreen = '/successScreen';
   // ************* HOME *************
@@ -85,6 +87,10 @@ abstract class AppRouter {
       GoRoute(
         path: changePassword,
         builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: setupServices,
+        builder: (context, state) => const SetupServicesScreen(),
       ),
     ],
   );

@@ -45,6 +45,8 @@ class _SplashScreenState extends State<SplashScreen> {
         listener: (context, state) {
           if (state == 'home') {
             GoRouter.of(context).pushReplacement(AppRouter.initialRoot);
+          } else if (state == 'setupServices') {
+            GoRouter.of(context).pushReplacement(AppRouter.setupServices);
           } else if (state == 'onboarding') {
             GoRouter.of(context).pushReplacement(AppRouter.onboarding);
           } else if (state == 'login') {

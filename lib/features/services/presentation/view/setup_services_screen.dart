@@ -3,26 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
-import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
 import 'package:lavanderia_partner/features/auth/register/data/services_catalog.dart';
+import 'package:lavanderia_partner/features/services/data/models/selected_service.dart';
 
-/// الخطوة التالتة: اختيار الخدمات وتحديد سعر لكل واحدة
-/// لما الخدمة تتختار بيفتح تحتها حقل سعر أرقام بس
-class ServicesStep extends StatefulWidget {
-  final RegisterData data;
-  final VoidCallback onNext;
-
-  const ServicesStep({super.key, required this.data, required this.onNext});
+/// شاشة إعداد الخدمات، بتظهر مرة واحدة بعد أول تسجيل دخول
+/// اليوزر بيختار الخدمات ويحدد سعر لكل واحدة، وبعد الحفظ مبتظهرش تاني
+class SetupServicesScreen extends StatefulWidget {
+  const SetupServicesScreen({super.key});
 
   @override
-  State<ServicesStep> createState() => _ServicesStepState();
+  State<SetupServicesScreen> createState() => _SetupServicesScreenState();
 }
 
-class _ServicesStepState extends State<ServicesStep> {
+class _SetupServicesScreenState extends State<SetupServicesScreen> {
   /// الخدمات المختارة بالـ id عشان الوصول يبقى سريع
   final Map<String, SelectedService> _selected = {};
 
@@ -32,35 +32,22 @@ class _ServicesStepState extends State<ServicesStep> {
   /// الخدمات اللي اتختارت ومحطّتش سعر، بتتعلّم بالأحمر بعد محاولة الحفظ
   Set<String> _invalidPrices = {};
 
-  @override
-  void initState() {
-    super.initState();
-    // بنرجّع اللي اليوزر اختاره قبل كده لو رجع خطوة لورا
-    for (final service in widget.data.selectedServices) {
-      _selected[service.id] = service;
-      _priceControllers[service.id] = TextEditingController(
-        text: service.price,
-      );
-    }
-  }
+  bool _isSaving = false;
 
   @override
   void dispose() {
-    // بنحفظ اللي اليوزر كتبه حتى لو خرج بزرار الرجوع
-    // عشان الأسعار ماتضيعش لما يرجع للخطوة تاني
-    _persistSelection();
     for (final controller in _priceControllers.values) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  /// بينقل الأسعار من الكنترولرز للموديل وبيرتب الخدمات حسب الكتالوج
-  void _persistSelection() {
+  /// بينقل الأسعار من الكنترولرز للموديل وبيرجّع الخدمات مرتبة حسب الكتالوج
+  List<SelectedService> _collectSelection() {
     for (final entry in _selected.entries) {
       entry.value.price = _priceControllers[entry.key]?.text.trim() ?? '';
     }
-    widget.data.selectedServices = ServicesCatalog.all
+    return ServicesCatalog.all
         .where((option) => _selected.containsKey(option.id))
         .map((option) => _selected[option.id]!)
         .toList();
@@ -84,18 +71,20 @@ class _ServicesStepState extends State<ServicesStep> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSaving) return;
+
     if (_selected.isEmpty) {
       _showMessage('select_at_least_one_service');
       return;
     }
 
     // بنحدّث الأسعار من الكنترولرز قبل التحقق
-    _persistSelection();
+    final services = _collectSelection();
 
-    final missing = _selected.entries
-        .where((entry) => !entry.value.hasValidPrice)
-        .map((entry) => entry.key)
+    final missing = services
+        .where((service) => !service.hasValidPrice)
+        .map((service) => service.id)
         .toSet();
 
     if (missing.isNotEmpty) {
@@ -104,8 +93,17 @@ class _ServicesStepState extends State<ServicesStep> {
       return;
     }
 
-    setState(() => _invalidPrices = {});
-    widget.onNext();
+    setState(() {
+      _invalidPrices = {};
+      _isSaving = true;
+    });
+
+    // TODO: ربط الـ API — services.map((s) => s.toJson()).toList()
+    // العلامة بتتحفظ بعد نجاح الإرسال بس، عشان لو فشل الشاشة تظهر تاني
+    await CacheManager.setServicesSetupCompleted();
+
+    if (!mounted) return;
+    context.go(AppRouter.initialRoot);
   }
 
   void _showMessage(String messageKey) {
@@ -119,28 +117,74 @@ class _ServicesStepState extends State<ServicesStep> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LocalizedLabel(
-          text: 'choose_your_services',
-          textAlign: TextAlign.center,
-          style: TextStyles.darkRegular16.copyWith(color: AppColors.greyColor3),
-        ),
-        Gap(16.h),
-
-        ...ServicesCatalog.all.map(_buildServiceTile),
-
-        Gap(20.h),
-        CustomButton(
-          onPressed: _submit,
-          title: _selected.isEmpty
-              ? 'next'.tr()
-              : 'next_with_count'.tr(
-                  namedArgs: {'count': '${_selected.length}'},
+    return Scaffold(
+      backgroundColor: AppColors.secondaryColor,
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(16.w, 18.h, 16.w, 30.h),
+              children: [
+                LocalizedLabel(
+                  text: 'choose_your_services',
+                  textAlign: TextAlign.center,
+                  style: TextStyles.darkRegular16.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
                 ),
-        ),
-      ],
+                Gap(16.h),
+
+                ...ServicesCatalog.all.map(_buildServiceTile),
+
+                Gap(20.h),
+                CustomButton(
+                  onPressed: _submit,
+                  title: _selected.isEmpty
+                      ? 'save'.tr()
+                      : 'save_with_count'.tr(
+                          namedArgs: {'count': '${_selected.length}'},
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// نفس الهيدر الأزرق بتاع التسجيل عشان الشاشة تبان تكملة للـ flow
+  /// من غير زرار رجوع لأن الإعداد لازم يخلص قبل الدخول للرئيسية
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      color: AppColors.primaryColor,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 16.h,
+        bottom: 18.h,
+        left: 16.w,
+        right: 16.w,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LocalizedLabel(
+            text: 'setup_services_title',
+            style: TextStyles.whiteBold15.copyWith(fontSize: 18.sp),
+          ),
+          Gap(4.h),
+          LocalizedLabel(
+            text: 'setup_services_subtitle',
+            maxLines: 2,
+            style: TextStyles.whiteBold14.copyWith(
+              fontWeight: FontWeight.w300,
+              fontSize: 13.sp,
+              color: Colors.white.withValues(alpha: 0.75),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

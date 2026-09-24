@@ -8,6 +8,7 @@ class CacheManager {
   static const _fcmToken = 'fcmToken';
   static const _userIdKey = 'userId';
   static const _isGuestModeKey = 'isGuestMode';
+  static const _servicesSetupKey = 'hasCompletedServicesSetup';
   static SharedPreferences? _sharedPreferences;
 
   // Singleton instance
@@ -193,6 +194,16 @@ class CacheManager {
   static Future<void> clearGuestMode() async {
     await sharedPreferences.remove(_isGuestModeKey);
     log('Guest mode cleared');
+  }
+
+  /// المغسلة خلصت إعداد الخدمات بعد أول تسجيل دخول
+  /// مبيتمسحش مع التوكنز عشان الشاشة ماتظهرش تاني بعد تسجيل الخروج
+  static Future<void> setServicesSetupCompleted() async {
+    await sharedPreferences.setBool(_servicesSetupKey, true);
+  }
+
+  static bool hasCompletedServicesSetup() {
+    return sharedPreferences.getBool(_servicesSetupKey) ?? false;
   }
 
   /// Toggle guest mode and return the new value

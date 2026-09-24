@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/helpers/validators.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
@@ -120,7 +121,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   // الانتقال جوه الشرط عشان الفورم الغلط مايعديش
                   if (_formKey.currentState!.validate()) {
                     // TODO: Handle login logic
-                    context.go(AppRouter.initialRoot);
+                    // أول دخول بيروح لإعداد الخدمات، وبعد كده للرئيسية على طول
+                    context.go(
+                      CacheManager.hasCompletedServicesSetup()
+                          ? AppRouter.initialRoot
+                          : AppRouter.setupServices,
+                    );
                   }
                 },
                 title: "sign_in".tr(),

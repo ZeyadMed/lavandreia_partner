@@ -36,8 +36,6 @@ class ReviewStep extends StatelessWidget {
         Gap(14.h),
         _buildLocation(),
         Gap(14.h),
-        _buildServices(),
-        Gap(14.h),
         _buildWorkingHours(),
         Gap(22.h),
         CustomButton(onPressed: onSubmit, title: 'sign_up'.tr()),
@@ -114,55 +112,10 @@ class ReviewStep extends StatelessWidget {
     );
   }
 
-  Widget _buildServices() {
-    return _SectionWithEdit(
-      titleKey: 'selected_services_count',
-      titleArgs: {'count': '${data.selectedServices.length}'},
-      onEdit: () => onEditStep(3),
-      child: Column(
-        children: [
-          ...data.selectedServices.map(
-            (service) => Padding(
-              padding: EdgeInsets.only(bottom: 8.h),
-              child: Row(
-                children: [
-                  Label(text: service.emoji, style: TextStyle(fontSize: 16.sp)),
-                  Gap(8.w),
-                  Expanded(
-                    child: Label(
-                      text: service.name,
-                      style: TextStyles.darkRegular14,
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 4.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryColor,
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Label(
-                      text: '${service.price} ${'currency'.tr()}',
-                      style: TextStyles.darkBold12.copyWith(
-                        color: AppColors.primaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildWorkingHours() {
     return _SectionWithEdit(
       titleKey: 'working_hours',
-      onEdit: () => onEditStep(4),
+      onEdit: () => onEditStep(3),
       child: Column(
         children: data.workingDays
             .map(
@@ -205,15 +158,11 @@ class ReviewStep extends StatelessWidget {
 /// كارت مراجعة بعنوان وزرار تعديل على اليمين
 class _SectionWithEdit extends StatelessWidget {
   final String titleKey;
-
-  /// بارامترات الترجمة لو العنوان فيه عدد زي "الخدمات المختارة (2)"
-  final Map<String, String>? titleArgs;
   final VoidCallback onEdit;
   final Widget child;
 
   const _SectionWithEdit({
     required this.titleKey,
-    this.titleArgs,
     required this.onEdit,
     required this.child,
   });
@@ -227,10 +176,8 @@ class _SectionWithEdit extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Label(
-                  text: titleArgs == null
-                      ? titleKey.tr()
-                      : titleKey.tr(namedArgs: titleArgs!),
+                child: LocalizedLabel(
+                  text: titleKey,
                   style: TextStyles.blackBold16,
                 ),
               ),

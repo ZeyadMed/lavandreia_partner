@@ -1,9 +1,9 @@
 abstract interface class Endpoints {
-  static const String baseUrl = 'https://app.professional-lawyer.com/api/';
+  static const String baseUrl = 'https://lavanderia.runasp.net/';
   static const String updateLocation = '';
 
   // ****************************** Auth ********************************
-  static const String register = 'register';
+  static const String register = '/api/auth/laundry/register';
   static const String verifyOtp = 'verify-otp';
   static const String login = 'login';
   static const String forgetPassword = 'forgot/password';

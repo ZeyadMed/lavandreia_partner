@@ -8,11 +8,10 @@ import 'package:lavanderia_partner/features/auth/register/data/models/register_d
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/laundry_info_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/location_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/review_step.dart';
-import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/services_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/working_hours_step.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/register_step_header.dart';
 
-/// شاشة إنشاء حساب المغسلة، خمس خطوات على نفس الشاشة
+/// شاشة إنشاء حساب المغسلة، أربع خطوات على نفس الشاشة
 /// الداتا كلها في [RegisterData] واحدة بتتمرر للخطوات وبتتعبى تدريجياً
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,7 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const List<String> _stepKeys = [
     'step_laundry_info',
     'step_location',
-    'step_services',
     'step_working_hours',
     'step_review',
   ];
@@ -118,20 +116,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onNext: _next,
         );
       case 3:
-        return ServicesStep(
-          key: const ValueKey('step_3'),
-          data: _data,
-          onNext: _next,
-        );
-      case 4:
         return WorkingHoursStep(
-          key: const ValueKey('step_4'),
+          key: const ValueKey('step_3'),
           data: _data,
           onNext: _next,
         );
       default:
         return ReviewStep(
-          key: const ValueKey('step_5'),
+          key: const ValueKey('step_4'),
           data: _data,
           onSubmit: _submit,
           onEditStep: _goToStep,

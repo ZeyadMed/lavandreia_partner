@@ -9,7 +9,7 @@ import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/time_picker_sheet.dart';
 
-/// الخطوة الرابعة: مواعيد العمل لكل يوم في الأسبوع
+/// الخطوة التالتة: مواعيد العمل لكل يوم في الأسبوع
 /// كل يوم له سويتش "مغلق"، ولو مفتوح بيحدد من ساعة لساعة
 class WorkingHoursStep extends StatefulWidget {
   final RegisterData data;
