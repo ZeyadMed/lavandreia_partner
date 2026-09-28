@@ -90,7 +90,7 @@ flutter_launcher_icons:
   ios: true
   remove_alpha_ios: true
   # الأندرويد الجديد بيستخدم adaptive icon: الرمز شفاف على خلفية البراند
-  adaptive_icon_background: "#3872E0"
+  adaptive_icon_background: "#01E3F1"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 flutter:
