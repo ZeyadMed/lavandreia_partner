@@ -387,5 +387,16 @@
   "no_reviews": "لا توجد تقييمات بعد",
   "reviews_load_failed": "تعذر تحميل التقييمات",
   "orders_load_failed": "تعذر تحميل الطلبات",
-  "no_orders": "لا توجد طلبات بعد"
+  "no_orders": "لا توجد طلبات بعد",
+  "my_wallet": "المحفظة",
+  "wallet_balance": "الرصيد الحالي",
+  "wallet_transactions": "حركات المحفظة",
+  "no_wallet_transactions": "لا توجد حركات بعد",
+  "wallet_transactions_load_failed": "تعذر تحميل حركات المحفظة",
+  "notifications": "الإشعارات",
+  "no_notifications": "لا توجد إشعارات بعد",
+  "notifications_load_failed": "تعذر تحميل الإشعارات",
+  "mark_all_as_read": "تعليم الكل كمقروء",
+  "delete_all_notifications": "حذف كل الإشعارات",
+  "delete_all_notifications_confirm": "هل أنت متأكد من حذف كل الإشعارات؟ لا يمكن التراجع عن هذا الإجراء."
 }

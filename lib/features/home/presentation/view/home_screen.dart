@@ -76,12 +76,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    HomeStatsRow(
-                      completedToday: OrdersMockData.completedTodayCount,
-                      inProgress: OrdersMockData.inProgressCount,
-                      newOrders: OrdersMockData.newOrdersCount,
-                    ),
-                    Gap(22.h),
+                    // HomeStatsRow(
+                    //   completedToday: OrdersMockData.completedTodayCount,
+                    //   inProgress: OrdersMockData.inProgressCount,
+                    //   newOrders: OrdersMockData.newOrdersCount,
+                    // ),
+                    // Gap(22.h),
                     BlocBuilder<OrdersCubit, BaseState<PartnerOrder>>(
                       bloc: _ordersCubit,
                       builder: (context, state) => LatestOrdersSection(

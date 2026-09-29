@@ -17,12 +17,14 @@ import 'package:lavanderia_partner/features/profile/data/profile_data_source.dar
 import 'package:lavanderia_partner/features/profile/presentation/view/edit_laundry_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/legal_page_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/reviews_screen.dart';
+import 'package:lavanderia_partner/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/support_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/working_hours_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/logout_dialog.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_header.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_widgets.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view_model/profile_cubit.dart';
+import 'package:lavanderia_partner/features/wallet/presentation/view/wallet_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -154,6 +156,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap: () {
             if (profile != null) _openEdit(profile);
           },
+        ),
+        ProfileMenuTile(
+          icon: Icons.account_balance_wallet_outlined,
+          labelKey: 'my_wallet',
+          onTap: () => _open(const WalletScreen()),
+        ),
+        ProfileMenuTile(
+          icon: Icons.notifications_none_rounded,
+          labelKey: 'notifications',
+          onTap: () => _open(const NotificationsScreen()),
         ),
         ProfileMenuTile(
           icon: Icons.access_time,

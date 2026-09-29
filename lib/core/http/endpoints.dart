@@ -58,4 +58,25 @@ abstract interface class Endpoints {
 
   /// رفض الطلب الجديد، POST من غير body
   static String rejectOrder(int orderId) => '$orders/$orderId/reject';
+
+  /// رصيد محفظة المغسلة
+  static const String wallet = 'api/laundry/wallet';
+
+  /// حركات المحفظة، بتقبل ?PageIndex و ?PageSize
+  static const String walletTransactions = '$wallet/transactions';
+
+  /// إشعارات المغسلة: GET بيجيبها وبيقبل ?PageIndex و ?PageSize،
+  /// و DELETE بيمسحها كلها
+  static const String notifications = 'api/laundry/notifications';
+
+  /// تعليم كل الإشعارات كمقروءة، PUT من غير body
+  static const String readAllNotifications = '$notifications/read-all';
+
+  /// DELETE بيمسح إشعار واحد
+  static String notification(int notificationId) =>
+      '$notifications/$notificationId';
+
+  /// تعليم إشعار واحد كمقروء، PUT من غير body
+  static String readNotification(int notificationId) =>
+      '$notifications/$notificationId/read';
 }

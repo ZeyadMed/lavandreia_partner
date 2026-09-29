@@ -384,5 +384,16 @@
   "no_reviews": "No reviews yet",
   "reviews_load_failed": "Couldn't load reviews",
   "orders_load_failed": "Couldn't load orders",
-  "no_orders": "No orders yet"
+  "no_orders": "No orders yet",
+  "my_wallet": "Wallet",
+  "wallet_balance": "Current balance",
+  "wallet_transactions": "Transactions",
+  "no_wallet_transactions": "No transactions yet",
+  "wallet_transactions_load_failed": "Couldn't load transactions",
+  "notifications": "Notifications",
+  "no_notifications": "No notifications yet",
+  "notifications_load_failed": "Couldn't load notifications",
+  "mark_all_as_read": "Mark all as read",
+  "delete_all_notifications": "Delete all notifications",
+  "delete_all_notifications_confirm": "Are you sure you want to delete all notifications? This can't be undone."
 }

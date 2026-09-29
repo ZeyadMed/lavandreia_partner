@@ -13,10 +13,12 @@ import 'package:lavanderia_partner/core/http/token_refresh_service.dart';
 import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
+import 'package:lavanderia_partner/features/notifications/data/notifications_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/profile_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/reviews_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/working_hours_data_source.dart';
 import 'package:lavanderia_partner/features/services/data/laundry_services_data_source.dart';
+import 'package:lavanderia_partner/features/wallet/data/wallet_data_source.dart';
 // import 'package:lavanderia_partner/features/home/presentation/view_model/location_controller.dart';
 // import 'package:lavanderia_partner/features/laundry_details/presentation/view_model/selected_services_controller.dart';
 
@@ -111,6 +113,14 @@ class SharedServiceLocator {
 
     getIt.registerLazySingleton<ProfileDataSource>(
       () => ProfileDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<WalletDataSource>(
+      () => WalletDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<NotificationsDataSource>(
+      () => NotificationsDataSource(getIt<GenericDataSource>()),
     );
 
     // singleton مش lazy عشان العنوان يفضل محفوظ ويتشارك بين الشاشات

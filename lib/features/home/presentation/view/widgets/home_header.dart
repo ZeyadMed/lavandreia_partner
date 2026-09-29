@@ -6,6 +6,7 @@ import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/style/assets.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/flexiable_image.dart';
+import 'package:lavanderia_partner/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
 
 /// هيدر الصفحة الرئيسية: الترحيب واسم المغسلة وعنوانها وصورتها
@@ -95,8 +96,37 @@ class HomeHeader extends StatelessWidget {
             ),
           ),
           Gap(12.w),
+          const _NotificationsButton(),
+          Gap(10.w),
           _LaundryImage(imageUrl: profile?.imageUrl),
         ],
+      ),
+    );
+  }
+}
+
+/// زرار الجرس اللي بيفتح صفحة الإشعارات
+class _NotificationsButton extends StatelessWidget {
+  const _NotificationsButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.18),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(10.r),
+          child: Icon(
+            Icons.notifications_none_rounded,
+            size: 24.sp,
+            color: AppColors.whiteColor,
+          ),
+        ),
       ),
     );
   }
