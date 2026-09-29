@@ -3,6 +3,28 @@ import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/helpers/logger.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
 
+/// نتيجة التجديد: لازم نفرّق بين إن الـ refresh token نفسه اترفض
+/// (الجلسة انتهت فعلاً) وبين إن التجديد وقع بسبب النت أو السيرفر.
+sealed class RefreshResult {
+  const RefreshResult();
+}
+
+/// اتجدد بنجاح وده الـ accessToken الجديد
+final class RefreshSuccess extends RefreshResult {
+  const RefreshSuccess(this.accessToken);
+  final String accessToken;
+}
+
+/// السيرفر رفض الـ refresh token أو مفيش واحد محفوظ، يعني الجلسة انتهت
+final class RefreshInvalid extends RefreshResult {
+  const RefreshInvalid();
+}
+
+/// فشل مؤقت (نت، timeout، 5xx) — الـ refresh token لسه سليم فمانمسحوش
+final class RefreshTransientFailure extends RefreshResult {
+  const RefreshTransientFailure();
+}
+
 /// بيتولى تجديد الـ accessToken باستخدام الـ refreshToken.
 ///
 /// بيستخدم Dio مستقل (من غير الانترسبتور) عشان لو التجديد نفسه رجع 401
@@ -28,26 +50,25 @@ class TokenRefreshService {
 
   /// لو فيه تجديد شغال بالفعل، أي ريكوست تاني بيستنى نفس النتيجة
   /// بدل ما نبعت كذا طلب تجديد في نفس الوقت ونحرق الـ refresh token.
-  Future<String?>? _ongoingRefresh;
+  Future<RefreshResult>? _ongoingRefresh;
 
   bool get hasRefreshToken {
     final token = CacheManager.getRefreshTokenSync();
     return token != null && token.isNotEmpty;
   }
 
-  /// بترجع accessToken جديد، أو null لو التجديد فشل.
   /// المكالمات المتوازية بتشارك نفس العملية.
-  Future<String?> refresh() {
+  Future<RefreshResult> refresh() {
     return _ongoingRefresh ??= _performRefresh().whenComplete(() {
       _ongoingRefresh = null;
     });
   }
 
-  Future<String?> _performRefresh() async {
+  Future<RefreshResult> _performRefresh() async {
     final refreshToken = CacheManager.getRefreshTokenSync();
     if (refreshToken == null || refreshToken.isEmpty) {
       loggerWarn('Refresh skipped: no refresh token stored');
-      return null;
+      return const RefreshInvalid();
     }
 
     try {
@@ -59,15 +80,17 @@ class TokenRefreshService {
       final data = response.data;
       if (data is! Map) {
         loggerError('Refresh failed: unexpected response shape');
-        return null;
+        return const RefreshTransientFailure();
       }
 
-      final newAccessToken = data['accessToken'] as String?;
-      final newRefreshToken = data['refreshToken'] as String?;
+      // التوكنز ممكن تيجي في أول الريسبونس أو جوه data زي اللوجين
+      final payload = data['data'] is Map ? data['data'] as Map : data;
+      final newAccessToken = payload['accessToken'] as String?;
+      final newRefreshToken = payload['refreshToken'] as String?;
 
       if (newAccessToken == null || newAccessToken.isEmpty) {
         loggerError('Refresh failed: response had no accessToken');
-        return null;
+        return const RefreshTransientFailure();
       }
 
       // الباك اند بيدوّر الـ refresh token، فلو رجع واحد جديد لازم نحفظه
@@ -80,13 +103,18 @@ class TokenRefreshService {
       );
 
       logger('Access token refreshed');
-      return newAccessToken;
+      return RefreshSuccess(newAccessToken);
     } on DioException catch (e) {
-      loggerError('Refresh request failed: ${e.response?.statusCode} $e');
-      return null;
+      final statusCode = e.response?.statusCode;
+      loggerError('Refresh request failed: $statusCode $e');
+      // بس رفض صريح من السيرفر يعني الجلسة انتهت، غير كده نحتفظ بالتوكنز
+      if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
+        return const RefreshInvalid();
+      }
+      return const RefreshTransientFailure();
     } catch (e) {
       loggerError('Refresh request failed: $e');
-      return null;
+      return const RefreshTransientFailure();
     }
   }
 }

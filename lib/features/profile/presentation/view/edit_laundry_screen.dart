@@ -4,23 +4,26 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/custom_app_bar.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/helpers/validators.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/core/widget/custom_phone_field.dart';
 import 'package:lavanderia_partner/core/widget/custom_text_field.dart';
-import 'package:lavanderia_partner/features/auth/register/data/locations_data_source.dart';
-import 'package:lavanderia_partner/features/auth/register/data/models/country_model.dart';
+import 'package:lavanderia_partner/features/auth/register/data/models/city_model.dart';
+import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/map_picker_screen.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/laundry_cover_picker.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/widgets/register_section_card.dart';
 import 'package:lavanderia_partner/features/profile/data/models/laundry_profile.dart';
+import 'package:lavanderia_partner/features/profile/data/profile_data_source.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/location_picker_card.dart';
 
-/// تعديل بيانات المغسلة
-/// الموقع جوه الصفحة دي مش صفحة لوحدها، فاليوزر بيعدل كل حاجة في مكان واحد
-/// بيرجّع النسخة المعدلة لما اليوزر يحفظ، و null لو رجع من غير حفظ
+/// تعديل بيانات المغسلة، الحقول هنا هي اللي بيقبلها PUT api/laundry/profile بس
+/// بيرجّع النسخة المعدلة لما الحفظ ينجح، و null لو اليوزر رجع من غير حفظ
 class EditLaundryScreen extends StatefulWidget {
   final LaundryProfile profile;
 
@@ -31,30 +34,32 @@ class EditLaundryScreen extends StatefulWidget {
 }
 
 class _EditLaundryScreenState extends State<EditLaundryScreen> {
+  /// المدن كلها في ليبيا، فبنحصر البحث على الخريطة فيها
+  static const String _countryCode = 'LY';
+
   final _formKey = GlobalKey<FormState>();
-  final LocationsDataSource _locationsSource =
-      const StaticLocationsDataSource();
+  final RegisterDataSource _citiesSource = getIt<RegisterDataSource>();
+  final ProfileDataSource _profileSource = getIt<ProfileDataSource>();
 
   /// بنشتغل على نسخة عشان لو اليوزر رجع من غير حفظ الأصل مايتغيرش
   late final LaundryProfile _draft = widget.profile.copy();
 
-  late final TextEditingController _laundryNameController;
+  late final TextEditingController _nameController;
   late final TextEditingController _ownerNameController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _areaController;
+  late final TextEditingController _addressController;
 
   String _completePhone = '';
   String _localPhone = '';
 
-  List<CountryModel> _countries = [];
-  CountryModel? _selectedCountry;
+  List<CityModel> _cities = [];
   CityModel? _selectedCity;
-  bool _isLoadingCountries = true;
+  bool _isLoadingCities = true;
+  bool _citiesFailed = false;
 
   /// بتتحط بعد محاولة حفظ فاشلة عشان التحذيرات تظهر
   /// من غير ما تبان لليوزر من أول لحظة
-  bool _showDropdownErrors = false;
+  bool _showCityError = false;
   bool _showMapError = false;
 
   bool _isSaving = false;
@@ -62,66 +67,47 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
   @override
   void initState() {
     super.initState();
-    _laundryNameController = TextEditingController(text: _draft.laundryName);
+    _nameController = TextEditingController(text: _draft.name);
     _ownerNameController = TextEditingController(text: _draft.ownerName);
-    _phoneController = TextEditingController(text: _draft.phoneLocal);
-    _emailController = TextEditingController(text: _draft.email);
-    _areaController = TextEditingController(text: _draft.areaName);
-    _completePhone = _draft.phone;
-    _localPhone = _draft.phoneLocal;
-    _loadCountries();
+    _phoneController = TextEditingController(text: _draft.ownerPhoneLocal);
+    _addressController = TextEditingController(text: _draft.address);
+    _completePhone = _draft.ownerPhoneNumber;
+    _localPhone = _draft.ownerPhoneLocal;
+    _loadCities();
   }
 
   @override
   void dispose() {
-    _laundryNameController.dispose();
+    _nameController.dispose();
     _ownerNameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
-    _areaController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCountries() async {
-    final countries = await _locationsSource.getCountries();
+  Future<void> _loadCities() async {
+    setState(() {
+      _isLoadingCities = true;
+      _citiesFailed = false;
+    });
+
+    final result = await _citiesSource.getCities();
     if (!mounted) return;
 
-    setState(() {
-      _countries = countries;
-      _isLoadingCountries = false;
-      _restoreSelection();
-    });
-  }
-
-  /// بنرجّع الدولة والمدينة المحفوظين في بيانات المغسلة
-  void _restoreSelection() {
-    if (_draft.countryId == null) return;
-
-    for (final country in _countries) {
-      if (country.id != _draft.countryId) continue;
-      _selectedCountry = country;
-
-      for (final city in country.cities) {
-        if (city.id == _draft.cityId) _selectedCity = city;
-      }
-      return;
-    }
-  }
-
-  void _onCountryChanged(CountryModel? country) {
-    setState(() {
-      _selectedCountry = country;
-      // المدينة القديمة مش بتنتمي للدولة الجديدة فلازم تتصفّر
-      _selectedCity = null;
-      _clearDropdownErrorIfResolved();
-    });
-  }
-
-  void _clearDropdownErrorIfResolved() {
-    if (!_showDropdownErrors) return;
-    if (_selectedCountry != null && _selectedCity != null) {
-      _showDropdownErrors = false;
-    }
+    result.fold(
+      (_) => setState(() {
+        _isLoadingCities = false;
+        _citiesFailed = true;
+      }),
+      (cities) => setState(() {
+        _cities = cities;
+        _isLoadingCities = false;
+        // بنرجّع المدينة المحفوظة في بيانات المغسلة
+        _selectedCity = cities
+            .where((city) => city.id == _draft.cityId)
+            .firstOrNull;
+      }),
+    );
   }
 
   Future<void> _openMapPicker() async {
@@ -130,7 +116,7 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
         builder: (_) => MapPickerScreen(
           initialLatitude: _draft.latitude,
           initialLongitude: _draft.longitude,
-          countryCode: _selectedCountry?.isoCode,
+          countryCode: _countryCode,
         ),
       ),
     );
@@ -140,7 +126,9 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
     setState(() {
       _draft.latitude = result.latitude;
       _draft.longitude = result.longitude;
-      _draft.pickedAddress = result.address;
+      // العنوان اللي رجع من الخريطة بيملى الحقل، واليوزر يقدر يعدله بعدها
+      final picked = result.address.trim();
+      if (picked.isNotEmpty) _addressController.text = picked;
       _showMapError = false;
     });
   }
@@ -151,16 +139,16 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
     final formValid = _formKey.currentState!.validate();
     final mapValid = _draft.hasLocationOnMap;
     // الدروب داون بره الـ Form فبنتحقق منه بإيدينا
-    final dropdownsValid = _selectedCountry != null && _selectedCity != null;
+    final cityValid = _selectedCity != null;
 
     // بنعرض كل الأخطاء مع بعض بدل ما اليوزر يصلح واحد ويكتشف التاني
-    if (!mapValid || !dropdownsValid) {
+    if (!mapValid || !cityValid) {
       setState(() {
         _showMapError = !mapValid;
-        _showDropdownErrors = !dropdownsValid;
+        _showCityError = !cityValid;
       });
     }
-    if (!formValid || !mapValid || !dropdownsValid) return;
+    if (!formValid || !mapValid || !cityValid) return;
 
     // لو اليوزر ماغيّرش الرقم، onChanged مابيتنديش
     // فبنعتمد على اللي كان متخزن بدل ما نبعت رقم فاضي
@@ -168,21 +156,24 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
     if (typed != _localPhone) _localPhone = typed;
 
     _draft
-      ..laundryName = _laundryNameController.text.trim()
+      ..name = _nameController.text.trim()
       ..ownerName = _ownerNameController.text.trim()
-      ..phone = _completePhone
-      ..phoneLocal = _localPhone
-      ..email = _emailController.text.trim()
-      ..areaName = _areaController.text.trim()
-      ..countryId = _selectedCountry!.id
+      ..ownerPhoneNumber = _completePhone
+      ..ownerPhoneLocal = _localPhone
+      ..address = _addressController.text.trim()
       ..cityId = _selectedCity!.id;
 
     setState(() => _isSaving = true);
-    // مؤقتاً تأخير بسيط بدل نداء الـ API
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final result = await _profileSource.updateProfile(_draft);
     if (!mounted) return;
 
-    Navigator.of(context).pop(_draft);
+    result.fold((failure) {
+      setState(() => _isSaving = false);
+      // أخطاء الاتصال والـ validation الـ ApiConsumer بيعرضها بنفسه
+      if (failure is ServerFailure || failure is UnknownFailure) {
+        context.showErrorMessage(failure.message);
+      }
+    }, (_) => Navigator.of(context).pop(_draft));
   }
 
   @override
@@ -216,7 +207,7 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
     );
   }
 
-  /// كارت بيانات المغسلة: الصورة والاسم والمسؤول والتواصل
+  /// كارت بيانات المغسلة: الصورة والاسم والمسؤول ورقمه
   Widget _buildInfoCard() {
     return RegisterSectionCard(
       titleKey: 'laundry_info',
@@ -225,15 +216,16 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
         children: [
           // الصورة اختيارية هنا، لأن المغسلة عندها صورة محفوظة أصلاً
           LaundryCoverPicker(
-            image: _draft.coverImage,
-            onChanged: (file) => setState(() => _draft.coverImage = file),
+            image: _draft.image,
+            imageUrl: _draft.imageUrl,
+            onChanged: (file) => setState(() => _draft.image = file),
           ),
           Gap(16.h),
 
           Customtextfield(
             labelText: 'laundry_name',
             hintText: 'laundry_name_hint',
-            textEditingController: _laundryNameController,
+            textEditingController: _nameController,
             keyboardType: TextInputType.text,
             validator: Validators.displayNameValidator,
           ),
@@ -248,7 +240,7 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
           ),
           Gap(14.h),
 
-          _FieldLabel(labelKey: 'phone_number'),
+          _FieldLabel(labelKey: 'owner_phone'),
           Gap(8.h),
           CustomPhoneField(
             controller: _phoneController,
@@ -260,43 +252,28 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
                 ? 'phoneNumberEmpty'.tr()
                 : null,
           ),
-          Gap(14.h),
-
-          Customtextfield(
-            labelText: 'email_optional',
-            hintText: 'example@email.com',
-            textEditingController: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            validator: _optionalEmailValidator,
-          ),
         ],
       ),
     );
   }
 
-  /// كارت الموقع: الدولة والمدينة والمنطقة وتحديد الدبوس على الخريطة
-  /// كان صفحة لوحده في الديزاين، وضمّيناه هنا عشان التعديل يبقى في مكان واحد
+  /// كارت الموقع: المدينة والعنوان وتحديد الدبوس على الخريطة
   Widget _buildLocationCard() {
     return RegisterSectionCard(
       titleKey: 'location',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FieldLabel(labelKey: 'country'),
-          Gap(8.h),
-          _buildCountryDropdown(),
-          Gap(14.h),
-
           _FieldLabel(labelKey: 'city'),
           Gap(8.h),
           _buildCityDropdown(),
           Gap(14.h),
 
           Customtextfield(
-            labelText: 'area_name',
-            hintText: 'area_name_hint',
-            textEditingController: _areaController,
-            keyboardType: TextInputType.text,
+            labelText: 'address',
+            hintText: 'address',
+            textEditingController: _addressController,
+            keyboardType: TextInputType.streetAddress,
             validator: Validators.validateEmpty,
           ),
           Gap(16.h),
@@ -304,7 +281,7 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
           LocationPickerCard(
             latitude: _draft.latitude,
             longitude: _draft.longitude,
-            address: _draft.pickedAddress,
+            address: _addressController.text,
             hasError: _showMapError,
             onTap: _openMapPicker,
           ),
@@ -313,75 +290,55 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
     );
   }
 
-  /// البريد اختياري: فاضي يعدي، ومكتوب لازم يبقى صحيح
-  String? _optionalEmailValidator(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
-    return Validators.emailValidator(value);
-  }
-
-  Widget _buildCountryDropdown() {
-    if (_isLoadingCountries) return const _DropdownPlaceholder();
-
-    return _DropdownShell(
-      hasError: _showDropdownErrors && _selectedCountry == null,
-      child: DropdownButton<CountryModel>(
-        isExpanded: true,
-        value: _selectedCountry,
-        hint: LocalizedLabel(
-          text: 'select_country',
-          style: TextStyles.darkRegular16.copyWith(color: AppColors.greyColor3),
-        ),
-        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-        items: _countries
-            .map(
-              (country) => DropdownMenuItem(
-                value: country,
-                child: Label(
-                  text: country.nameFor(context.locale.languageCode),
-                  style: TextStyles.darkRegular16,
-                ),
-              ),
-            )
-            .toList(),
-        onChanged: _onCountryChanged,
-      ),
-    );
-  }
-
   Widget _buildCityDropdown() {
-    final cities = _selectedCountry?.cities ?? const <CityModel>[];
+    if (_isLoadingCities) return const _DropdownPlaceholder();
+
+    if (_citiesFailed) {
+      return _DropdownShell(
+        child: InkWell(
+          onTap: _loadCities,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 14.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: LocalizedLabel(
+                    text: 'cities_load_failed',
+                    style: TextStyles.darkRegular16.copyWith(
+                      color: AppColors.redColor,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.refresh, color: AppColors.primaryColor),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return _DropdownShell(
-      hasError: _showDropdownErrors && _selectedCity == null,
+      hasError: _showCityError && _selectedCity == null,
       child: DropdownButton<CityModel>(
         isExpanded: true,
         value: _selectedCity,
         hint: LocalizedLabel(
-          // الهينت بيوضح إن لازم الدولة الأول
-          text: _selectedCountry == null
-              ? 'select_country_first'
-              : 'select_city',
+          text: 'select_city',
           style: TextStyles.darkRegular16.copyWith(color: AppColors.greyColor3),
         ),
         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-        items: cities
+        items: _cities
             .map(
               (city) => DropdownMenuItem(
                 value: city,
-                child: Label(
-                  text: city.nameFor(context.locale.languageCode),
-                  style: TextStyles.darkRegular16,
-                ),
+                child: Label(text: city.name, style: TextStyles.darkRegular16),
               ),
             )
             .toList(),
-        // مقفول لحد ما دولة تتحدد
-        onChanged: cities.isEmpty
-            ? null
-            : (city) => setState(() {
-                _selectedCity = city;
-                _clearDropdownErrorIfResolved();
-              }),
+        onChanged: (city) => setState(() {
+          _selectedCity = city;
+          _showCityError = false;
+        }),
       ),
     );
   }
@@ -426,7 +383,7 @@ class _DropdownShell extends StatelessWidget {
   }
 }
 
-/// بيتعرض وقت تحميل الدول عشان الشكل مايقفزش لما اللستة توصل
+/// بيتعرض وقت تحميل المدن عشان الشكل مايقفزش لما اللستة توصل
 class _DropdownPlaceholder extends StatelessWidget {
   const _DropdownPlaceholder();
 

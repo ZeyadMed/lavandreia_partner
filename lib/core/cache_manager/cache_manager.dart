@@ -93,7 +93,7 @@ class CacheManager {
 
   static Future<void> saveAccessToken(String token) async {
     await sharedPreferences.setString(_accessTokenKey, token);
-    log('Token saved: $token');
+    log('Token saved');
   }
 
   static Future<void> delAccessToken() async {
@@ -146,7 +146,7 @@ class CacheManager {
 
   static Future<String?> getAccessToken() async {
     String? token = sharedPreferences.getString(_accessTokenKey);
-    log('Token retrieved: $token');
+    log('Token retrieved: ${token != null}');
     return token;
   }
 

@@ -41,12 +41,17 @@ class ProfileInfoRow extends StatelessWidget {
   /// آخر صف في الكارت مابيتحطش تحته خط
   final bool showDivider;
 
+  /// أرقام التليفون بتتكتب من الشمال لليمين حتى في العربي
+  /// عشان الكود (+20) مايتنقلش لآخر الرقم
+  final bool isLtr;
+
   const ProfileInfoRow({
     super.key,
     required this.icon,
     required this.labelKey,
     required this.value,
     this.showDivider = true,
+    this.isLtr = false,
   });
 
   @override
@@ -70,10 +75,18 @@ class ProfileInfoRow extends StatelessWidget {
                       ),
                     ),
                     Gap(3.h),
-                    Label(
-                      text: value.isEmpty ? '—' : value,
-                      maxLines: 2,
-                      style: TextStyles.boldStyle(14, weight: FontWeight.w600),
+                    Directionality(
+                      textDirection: isLtr
+                          ? TextDirection.ltr
+                          : Directionality.of(context),
+                      child: Label(
+                        text: value.isEmpty ? '—' : value,
+                        maxLines: 2,
+                        style: TextStyles.boldStyle(
+                          14,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),

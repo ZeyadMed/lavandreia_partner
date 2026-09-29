@@ -23,12 +23,18 @@ class LaundryCoverPicker extends StatelessWidget {
   /// من غير ما يبان لليوزر من أول لحظة
   final bool hasError;
 
+  /// لينك الصورة الحالية في شاشة التعديل، بيتعرض لحد ما اليوزر يختار صورة جديدة
+  final String? imageUrl;
+
   const LaundryCoverPicker({
     super.key,
     required this.image,
     required this.onChanged,
     this.hasError = false,
+    this.imageUrl,
   });
+
+  bool get _hasNetworkImage => imageUrl?.trim().isNotEmpty == true;
 
   void _pick(BuildContext context) {
     ImagePickerHelper.showImagePicker(context, (file) {
@@ -54,7 +60,9 @@ class LaundryCoverPicker extends StatelessWidget {
           ),
         ),
         Gap(8.h),
-        image == null ? _buildEmpty(context) : _buildPreview(context),
+        image != null || _hasNetworkImage
+            ? _buildPreview(context)
+            : _buildEmpty(context),
         if (hasError) ...[
           Gap(6.h),
           Padding(
@@ -128,23 +136,22 @@ class LaundryCoverPicker extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(14.r),
-          child: Image.file(
-            image!,
-            height: 150.h,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            // لو الملف اتمسح من الجهاز بعد الاختيار
-            errorBuilder: (context, error, stackTrace) => Container(
-              height: 150.h,
-              color: AppColors.secondaryColor,
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.broken_image_outlined,
-                size: 28.sp,
-                color: AppColors.greyColor3,
-              ),
-            ),
-          ),
+          child: image != null
+              ? Image.file(
+                  image!,
+                  height: 150.h,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  // لو الملف اتمسح من الجهاز بعد الاختيار
+                  errorBuilder: (_, _, _) => _buildBroken(),
+                )
+              : Image.network(
+                  imageUrl!.trim(),
+                  height: 150.h,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _buildBroken(),
+                ),
         ),
         PositionedDirectional(
           top: 8.h,
@@ -155,18 +162,32 @@ class LaundryCoverPicker extends StatelessWidget {
                 icon: Icons.edit_outlined,
                 onTap: () => _pick(context),
               ),
-              Gap(6.w),
-              _CircleAction(
-                icon: Icons.delete_outline,
-                color: AppColors.redColor,
-                onTap: () => onChanged(null),
-              ),
+              // الصورة المحفوظة على السيرفر مابتتمسحش، بتتغير بس
+              if (image != null) ...[
+                Gap(6.w),
+                _CircleAction(
+                  icon: Icons.delete_outline,
+                  color: AppColors.redColor,
+                  onTap: () => onChanged(null),
+                ),
+              ],
             ],
           ),
         ),
       ],
     );
   }
+
+  Widget _buildBroken() => Container(
+    height: 150.h,
+    color: AppColors.secondaryColor,
+    alignment: Alignment.center,
+    child: Icon(
+      Icons.broken_image_outlined,
+      size: 28.sp,
+      color: AppColors.greyColor3,
+    ),
+  );
 }
 
 /// زرار دائري صغير بيتحط فوق الصورة

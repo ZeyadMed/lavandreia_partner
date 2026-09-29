@@ -86,7 +86,7 @@ class HomeHeader extends StatelessWidget {
                       Expanded(
                         child: Label(
                           text: address,
-                          maxLines: 1,
+                          maxLines: 2,
                           style: subtitleStyle,
                         ),
                       ),
@@ -95,8 +95,8 @@ class HomeHeader extends StatelessWidget {
               ],
             ),
           ),
-          Gap(12.w),
-          const _NotificationsButton(),
+          // Gap(12.w),
+          // const _NotificationsButton(),
           Gap(10.w),
           _LaundryImage(imageUrl: profile?.imageUrl),
         ],
@@ -116,9 +116,9 @@ class _NotificationsButton extends StatelessWidget {
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
         child: Padding(
           padding: EdgeInsets.all(10.r),
           child: Icon(

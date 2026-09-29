@@ -2,118 +2,88 @@ import 'dart:io';
 
 import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
 
-/// بيانات المغسلة اللي بتتعرض في صفحة حسابي وبتتعدل من صفحة التعديل
+/// البيانات اللي بتتعدل من صفحة تعديل المغسلة وبتتبعت في PUT api/laundry/profile
 /// mutable عن قصد زي RegisterData لأن شاشة التعديل بتعدل عليها مباشرة
 class LaundryProfile {
-  String laundryName;
+  String name;
   String ownerName;
 
-  /// رقم التواصل كامل بكود الدولة
-  String phone;
+  /// رقم المسؤول كامل بكود الدولة
+  String ownerPhoneNumber;
 
   /// الرقم من غير الكود، بيتخزن عشان الحقل يترجّع مليان في التعديل
-  String phoneLocal;
+  String ownerPhoneLocal;
 
-  String email;
-
-  /// اسم المنطقة/الحي، نص حر
-  String areaName;
-
-  String? countryId;
-  String? cityId;
+  String address;
+  int? cityId;
 
   /// إحداثيات الدبوس على الخريطة
   double? latitude;
   double? longitude;
 
-  /// العنوان النصي اللي رجع من الخريطة
-  String? pickedAddress;
+  /// لينك الصورة الحالية، للعرض بس في شاشة التعديل
+  String imageUrl;
 
-  /// صورة الغلاف الجديدة لو اليوزر غيّرها، بتتبعت كـ multipart
-  File? coverImage;
-
-  /// لينك صورة الغلاف الحالية الجاي من السيرفر
-  String? coverImageUrl;
-
-  /// ساعات العمل كنص جاهز للعرض، الجدول الكامل بيتعدل من مكان تاني
-  String workingHours;
-
-  /// المغسلة مستقبلة طلبات ولا لأ، نفس السويتش اللي في الرئيسية
-  bool isAvailable;
+  /// الصورة الجديدة لو اليوزر غيّرها، بتتبعت كملف في الـ multipart
+  File? image;
 
   LaundryProfile({
-    required this.laundryName,
+    required this.name,
     required this.ownerName,
-    required this.phone,
-    required this.phoneLocal,
-    required this.email,
-    required this.areaName,
-    required this.workingHours,
-    this.countryId,
+    required this.ownerPhoneNumber,
+    required this.ownerPhoneLocal,
+    required this.address,
+    required this.imageUrl,
     this.cityId,
     this.latitude,
     this.longitude,
-    this.pickedAddress,
-    this.coverImage,
-    this.coverImageUrl,
-    this.isAvailable = true,
+    this.image,
   });
 
   /// من بيانات السيرفر، عشان شاشة التعديل تفتح مليانة
   /// الرقم المحلي هو الرقم من غير كود ليبيا
   factory LaundryProfile.fromPartner(PartnerProfile partner) => LaundryProfile(
-    laundryName: partner.name,
+    name: partner.name,
     ownerName: partner.ownerName,
-    phone: partner.phoneNumber,
-    phoneLocal: partner.phoneNumber.replaceFirst(RegExp(r'^\+218'), ''),
-    email: '',
-    areaName: partner.cityName,
-    workingHours: '',
-    cityId: partner.cityId?.toString(),
+    ownerPhoneNumber: partner.ownerPhoneNumber,
+    ownerPhoneLocal: partner.ownerPhoneNumber.replaceFirst(
+      RegExp(r'^\+218'),
+      '',
+    ),
+    address: partner.address,
+    cityId: partner.cityId,
     latitude: partner.latitude,
     longitude: partner.longitude,
-    pickedAddress: partner.address,
-    coverImageUrl: partner.imageUrl,
+    imageUrl: partner.imageUrl ?? '',
   );
 
   bool get hasLocationOnMap => latitude != null && longitude != null;
 
-  /// العنوان المعروض: اللي جه من الخريطة، وإلا اسم المنطقة
-  String get displayAddress {
-    final picked = pickedAddress?.trim() ?? '';
-    return picked.isNotEmpty ? picked : areaName;
-  }
-
   /// نسخة جديدة بنفس البيانات، شاشة التعديل بتشتغل عليها
   /// عشان لو اليوزر رجع من غير حفظ الأصل مايتغيرش
   LaundryProfile copy() => LaundryProfile(
-    laundryName: laundryName,
+    name: name,
     ownerName: ownerName,
-    phone: phone,
-    phoneLocal: phoneLocal,
-    email: email,
-    areaName: areaName,
-    workingHours: workingHours,
-    countryId: countryId,
+    ownerPhoneNumber: ownerPhoneNumber,
+    ownerPhoneLocal: ownerPhoneLocal,
+    address: address,
     cityId: cityId,
     latitude: latitude,
     longitude: longitude,
-    pickedAddress: pickedAddress,
-    coverImage: coverImage,
-    coverImageUrl: coverImageUrl,
-    isAvailable: isAvailable,
+    imageUrl: imageUrl,
+    image: image,
   );
 
-  Map<String, dynamic> toJson() => {
-    'laundry_name': laundryName,
-    'owner_name': ownerName,
-    'phone': phone,
-    if (email.trim().isNotEmpty) 'email': email.trim(),
-    'country_id': countryId,
-    'city_id': cityId,
-    'area_name': areaName,
-    'latitude': latitude,
-    'longitude': longitude,
-    'address': pickedAddress,
+  /// حقول الـ multipart بتاعة PUT api/laundry/profile، بنفس أسماء التسجيل
+  /// الصورة بتتبعت بس لو اليوزر اختار واحدة جديدة، وإلا السيرفر بيسيب القديمة
+  Map<String, dynamic> toFormData() => {
+    if (image != null) 'Image': image,
+    'Name': name,
+    'OwnerName': ownerName,
+    'OwnerPhoneNumber': ownerPhoneNumber,
+    'Address': address,
+    if (cityId != null) 'CityId': '$cityId',
+    if (latitude != null) 'Latitude': '$latitude',
+    if (longitude != null) 'Longitude': '$longitude',
   };
 }

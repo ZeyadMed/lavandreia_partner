@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -55,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (updated == null || !mounted) return;
 
+    context.showSuccessMessage('profile_updated'.tr());
     _profileCubit.fetchDataMap();
   }
 
@@ -124,11 +126,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: Icons.phone_outlined,
           labelKey: 'phone_number',
           value: profile?.phoneNumber ?? '',
+          isLtr: true,
         ),
         ProfileInfoRow(
           icon: Icons.person_outline,
           labelKey: 'owner_phone',
           value: profile?.ownerPhoneNumber ?? '',
+          isLtr: true,
         ),
         ProfileInfoRow(
           icon: Icons.location_city_outlined,

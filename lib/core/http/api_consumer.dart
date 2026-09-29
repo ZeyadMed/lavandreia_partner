@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/helpers/logger.dart';
+import 'package:lavanderia_partner/core/http/auth_interceptor.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/main.dart';
@@ -416,6 +417,32 @@ final class BaseApiConsumer implements ApiConsumer {
     _dio.interceptors.add(interceptor);
   }
 
+  /// لو كذا ريكوست وقعوا بـ 401 مع بعض، أول واحد بس يوجّه للوجين
+  static bool _isHandlingSessionExpiry = false;
+
+  Future<Failure> _handleUnauthorized(DioException error) async {
+    final failure = UnauthorizedFailure(
+      message: error.message ?? 'غير مصرح لك',
+      statusCode: error.response?.statusCode,
+    );
+
+    // الانترسبتور بيحط الفلاج بس لما التجديد يفشل فعلاً، فالـ 401 من اللوجين
+    // أو من فشل مؤقت في التجديد مايطردش المستخدم
+    final sessionExpired =
+        error.requestOptions.extra[AuthInterceptor.sessionExpiredFlag] == true;
+    if (!sessionExpired || _isHandlingSessionExpiry) return failure;
+
+    _isHandlingSessionExpiry = true;
+    try {
+      navigatorKey.currentContext?.showErrorMessage('عاود التسجيل من فضلك');
+      await DI.resetGetItAndInit();
+      navigatorKey.currentContext?.go(AppRouter.login);
+    } finally {
+      _isHandlingSessionExpiry = false;
+    }
+    return failure;
+  }
+
   Future<Failure> _handleDioError(DioException error) async {
     switch (error.type) {
       case DioExceptionType.cancel:
@@ -434,6 +461,10 @@ final class BaseApiConsumer implements ApiConsumer {
         navigatorKey.currentContext!.showErrorMessage('انتهت مهلة الاتصال ');
         return ServerFailure(message: 'انتهت مهلة الإرسال في الاتصال ');
       case DioExceptionType.badResponse:
+        // الـ 401 بيتفحص قبل الـ decode عشان الباك اند بيرجعه غالباً من غير body
+        if (error.response?.statusCode == 401) {
+          return _handleUnauthorized(error);
+        }
         if (error.response?.data != null) {
           try {
             final data = error.response!.data;
@@ -442,20 +473,6 @@ final class BaseApiConsumer implements ApiConsumer {
                 : data;
             if (error.response?.statusCode == 503) {
               return ServerFailure(message: 'network failure ${error.message}');
-            }
-            if (error.response?.statusCode == 401) {
-              // لو وصلنا هنا يبقى الانترسبتور جرّب يجدد بالـ refresh token وفشل،
-              // يعني الجلسة انتهت فعلاً. التوكنز اتمسحت هناك.
-              navigatorKey.currentContext!.showErrorMessage(
-                'عاود التسجيل من فضلك',
-              );
-              await DI.resetGetItAndInit();
-
-              navigatorKey.currentContext!.go(AppRouter.login);
-              return UnauthorizedFailure(
-                message: error.message ?? 'غير مصرح لك',
-                statusCode: error.response?.statusCode,
-              );
             }
             if (error.response?.statusCode == 413) {
               navigatorKey.currentContext!.showErrorMessage(

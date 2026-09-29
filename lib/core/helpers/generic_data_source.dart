@@ -425,6 +425,25 @@ class GenericDataSource {
     );
   }
 
+  /// PUT بـ multipart للـ endpoints اللي بتستقبل ملفات في التعديل
+  /// زي بروفايل المغسلة، والـ File بيتحول لـ MultipartFile زي postFormData
+  Future<Either<Failure, void>> updateFormData({
+    required String endpoint,
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+  }) async {
+    final processedData = await _processFormData(data ?? {});
+
+    final result = await _apiConsumer.put(
+      endpoint,
+      data: FormData.fromMap(processedData),
+      queryParameters: queryParameters,
+      headers: headers,
+    );
+    return result.fold((left) => Left(left), (_) => const Right(null));
+  }
+
   Future<Either<Failure, T>> head<T>(
       {required String endpoint,
       required int id,
