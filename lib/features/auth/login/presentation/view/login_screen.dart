@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
@@ -67,12 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
           context.showErrorMessage(failure.message);
         }
       },
-      (_) {
-        // أول دخول بيروح لإعداد الخدمات، وبعد كده للرئيسية على طول
+      (hasServices) {
+        // السيرفر هو اللي بيحدد: لو المغسلة لسه ماضافتش خدمات بتروح تعدّها
         context.go(
-          CacheManager.hasCompletedServicesSetup()
-              ? AppRouter.initialRoot
-              : AppRouter.setupServices,
+          hasServices ? AppRouter.initialRoot : AppRouter.setupServices,
         );
       },
     );

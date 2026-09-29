@@ -195,14 +195,17 @@ class _ItemRow extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyles.boldStyle(15, weight: FontWeight.w700),
               ),
-              Gap(2.h),
-              LocalizedLabel(
-                text: item.serviceKey,
-                maxLines: 1,
-                style: TextStyles.darkRegular12.copyWith(
-                  color: AppColors.greyColor4,
+              // طلبات السيرفر مش بترجّع نوع الخدمة
+              if (item.serviceKey.isNotEmpty) ...[
+                Gap(2.h),
+                LocalizedLabel(
+                  text: item.serviceKey,
+                  maxLines: 1,
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor4,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           const Spacer(),
@@ -272,6 +275,10 @@ class OrderMetaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // المسافة ووقت التسليم مش جايين من السيرفر لسه، فبنخفيهم لو صفر
+    final hasDistance = order.distanceKm > 0;
+    final hasEta = order.estimatedHours > 0;
+
     return DetailsCard(
       titleKey: 'order_info',
       child: Column(
@@ -282,13 +289,20 @@ class OrderMetaCard extends StatelessWidget {
             value: order.displayDate(
               Localizations.localeOf(context).languageCode,
             ),
+            showDivider: hasDistance || hasEta,
           ),
-          _MetaRow(labelKey: 'distance', value: order.displayDistance),
-          _MetaRow(
-            labelKey: 'estimated_delivery',
-            value: order.displayEta,
-            showDivider: false,
-          ),
+          if (hasDistance)
+            _MetaRow(
+              labelKey: 'distance',
+              value: order.displayDistance,
+              showDivider: hasEta,
+            ),
+          if (hasEta)
+            _MetaRow(
+              labelKey: 'estimated_delivery',
+              value: order.displayEta,
+              showDivider: false,
+            ),
         ],
       ),
     );

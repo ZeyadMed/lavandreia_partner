@@ -303,6 +303,8 @@
   "distance": "Distance",
   "estimated_delivery": "Estimated delivery",
   "update_status": "Update Status",
+  "accept_order": "Accept Order",
+  "reject_order": "Reject Order",
   "update_status_hint": "Choose the order's new stage",
   "current_stage": "Current stage",
   "stage_placed": "New order",
@@ -377,5 +379,10 @@
   "no_my_services": "No services added yet",
   "working_hours_saved": "Working hours saved successfully",
   "working_hours_load_failed": "Couldn't load working hours",
-  "logging_out": "Logging out..."
+  "logging_out": "Logging out...",
+  "my_reviews": "My reviews",
+  "no_reviews": "No reviews yet",
+  "reviews_load_failed": "Couldn't load reviews",
+  "orders_load_failed": "Couldn't load orders",
+  "no_orders": "No orders yet"
 }

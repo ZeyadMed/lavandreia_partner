@@ -76,11 +76,7 @@ class _LastUpdatedBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.info_outline,
-            size: 18.sp,
-            color: AppColors.primaryColor,
-          ),
+          Icon(Icons.info_outline, size: 18.sp, color: AppColors.primaryColor),
           Gap(10.w),
           Expanded(
             child: LocalizedLabel(

@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/core/widget/skeleton.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
 
 /// كارت الطلب الواحد، نفسه في الرئيسية وفي صفحة الطلبات
@@ -40,7 +41,6 @@ class OrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _StatusChip(status: order.status),
                 // const Spacer(),
                 Flexible(
                   child: Label(
@@ -51,6 +51,7 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                _StatusChip(status: order.status),
               ],
             ),
             Gap(6.h),
@@ -75,19 +76,9 @@ class OrderCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Label(
-                  text: order.displayTotal,
-                  maxLines: 1,
-                  style: TextStyles.boldStyle(
-                    16,
-                    color: AppColors.primaryColor,
-                    weight: FontWeight.w800,
-                  ),
-                ),
-                Gap(12.w),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _MetaRow(
                         icon: Icons.location_on,
@@ -101,6 +92,16 @@ class OrderCard extends StatelessWidget {
                         text: order.displayDate(context.locale.languageCode),
                       ),
                     ],
+                  ),
+                ),
+                Gap(12.w),
+                Label(
+                  text: order.displayTotal,
+                  maxLines: 1,
+                  style: TextStyles.boldStyle(
+                    16,
+                    color: AppColors.primaryColor,
+                    weight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -182,6 +183,8 @@ class _MetaRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Icon(icon, size: 14.sp, color: iconColor),
+        Gap(6.w),
         Flexible(
           child: Label(
             text: text,
@@ -192,9 +195,56 @@ class _MetaRow extends StatelessWidget {
             ),
           ),
         ),
-        Gap(6.w),
-        Icon(icon, size: 14.sp, color: iconColor),
       ],
+    );
+  }
+}
+
+/// لودينج الطلبات بنفس شكل [OrderCard]
+class OrderCardSkeleton extends StatelessWidget {
+  const OrderCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: SkeletonShimmer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SkeletonBox(width: 80.w, height: 24.h, radius: 10.r),
+                SkeletonBox(width: 50.w, height: 12.h),
+              ],
+            ),
+            Gap(10.h),
+            SkeletonBox(width: 120.w, height: 16.h),
+            Gap(14.h),
+            Row(
+              children: [
+                SkeletonBox(width: 60.w, height: 24.h, radius: 8.r),
+                Gap(8.w),
+                SkeletonBox(width: 70.w, height: 24.h, radius: 8.r),
+              ],
+            ),
+            Gap(16.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SkeletonBox(width: 60.w, height: 16.h),
+                SkeletonBox(width: 110.w, height: 12.h),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

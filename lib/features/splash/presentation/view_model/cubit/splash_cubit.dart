@@ -22,8 +22,8 @@ class SplashCubit extends Cubit<String> {
 
     // If the session is still alive, go to home. Otherwise, go to login.
     if (refreshToken != null && refreshToken.isNotEmpty) {
-      // لو قفل الأبلكيشن قبل ما يخلص إعداد الخدمات، بيرجعله تاني
-      emit(CacheManager.hasCompletedServicesSetup() ? 'home' : 'setupServices');
+      // إعداد الخدمات بيتحدد من ريسبونس اللوجين بس، فالجلسة المفتوحة بتروح للرئيسية
+      emit('home');
     } else {
       emit('login');
     }

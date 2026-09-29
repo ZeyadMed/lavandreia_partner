@@ -65,9 +65,13 @@ class _DayCardSkeleton extends StatelessWidget {
                 Gap(12.h),
                 Row(
                   children: [
-                    Expanded(child: SkeletonBox(height: 50.h, radius: 10.r)),
+                    Expanded(
+                      child: SkeletonBox(height: 50.h, radius: 10.r),
+                    ),
                     Gap(10.w),
-                    Expanded(child: SkeletonBox(height: 50.h, radius: 10.r)),
+                    Expanded(
+                      child: SkeletonBox(height: 50.h, radius: 10.r),
+                    ),
                   ],
                 ),
               ],

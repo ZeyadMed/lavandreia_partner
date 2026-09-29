@@ -32,7 +32,8 @@ class EditLaundryScreen extends StatefulWidget {
 
 class _EditLaundryScreenState extends State<EditLaundryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final LocationsDataSource _locationsSource = const StaticLocationsDataSource();
+  final LocationsDataSource _locationsSource =
+      const StaticLocationsDataSource();
 
   /// بنشتغل على نسخة عشان لو اليوزر رجع من غير حفظ الأصل مايتغيرش
   late final LaundryProfile _draft = widget.profile.copy();

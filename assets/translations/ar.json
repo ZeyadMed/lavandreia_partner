@@ -303,6 +303,8 @@
   "distance": "المسافة",
   "estimated_delivery": "وقت التسليم المتوقع",
   "update_status": "تحديث الحالة",
+  "accept_order": "قبول الطلب",
+  "reject_order": "رفض الطلب",
   "update_status_hint": "اختر المرحلة الجديدة للطلب",
   "current_stage": "المرحلة الحالية",
   "stage_placed": "طلب جديد",
@@ -380,5 +382,10 @@
   "no_my_services": "لا توجد خدمات مضافة بعد",
   "working_hours_saved": "تم حفظ مواعيد العمل بنجاح",
   "working_hours_load_failed": "تعذر تحميل مواعيد العمل",
-  "logging_out": "جاري تسجيل الخروج..."
+  "logging_out": "جاري تسجيل الخروج...",
+  "my_reviews": "تقييماتي",
+  "no_reviews": "لا توجد تقييمات بعد",
+  "reviews_load_failed": "تعذر تحميل التقييمات",
+  "orders_load_failed": "تعذر تحميل الطلبات",
+  "no_orders": "لا توجد طلبات بعد"
 }

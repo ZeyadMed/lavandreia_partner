@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
-import 'package:lavanderia_partner/features/orders/data/orders_mock_data.dart';
+import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/order_details_screen.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_card.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 
 /// فلتر التابات اللي فوق في صفحة الطلبات
 /// null في [status] معناها تاب "الكل"
@@ -59,58 +65,114 @@ class _OrdersScreenState extends State<OrdersScreen> {
       .indexWhere((filter) => filter.status == widget.initialStatus)
       .clamp(0, _filters.length - 1);
 
-  /// مؤقتاً من الداتا الوهمية لحد ما نربط الـ API
-  final List<PartnerOrder> _orders = OrdersMockData.all;
+  late final OrdersCubit _cubit = OrdersCubit(getIt<OrdersDataSource>())
+    ..initPagination()
+    ..fetch(page: 1);
 
-  /// بيفتح التفاصيل وبيستنى الطلب راجع منها عشان لو الحالة اتغيرت
-  /// الليستة تحدّث نفسها فوراً
-  Future<void> _openDetails(PartnerOrder order) async {
-    final updated = await Navigator.of(context).push<PartnerOrder>(
-      MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
-    );
-    if (updated == null || !mounted) return;
+  /// الطلب اللي اتقبل بنفتح له تاب "قيد التنفيذ" عشان اليوزر يلاقيه
+  late final StreamSubscription<PartnerOrder> _changesSubscription;
 
-    setState(() {
-      final index = _orders.indexWhere((o) => o.number == updated.number);
-      if (index != -1) _orders[index] = updated;
+  @override
+  void initState() {
+    super.initState();
+    _changesSubscription = OrdersCubit.changes.listen((order) {
+      if (order.stage != PartnerOrderStage.accepted || !mounted) return;
+      final index = _filters.indexWhere(
+        (filter) => filter.status == PartnerOrderStatus.inProgress,
+      );
+      setState(() => _selectedIndex = index);
     });
   }
 
-  List<PartnerOrder> get _visibleOrders {
+  @override
+  void dispose() {
+    _changesSubscription.cancel();
+    _cubit.close();
+    super.dispose();
+  }
+
+  /// الليستة بتتحدث لوحدها من [OrdersCubit.changes] لو الطلب اتعدل جوه
+  void _openDetails(PartnerOrder order) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)));
+  }
+
+  /// الفلترة على الطلبات اللي اتحملت بس لأن الـ API مش بياخد الحالة
+  List<PartnerOrder> _visibleOrders(List<PartnerOrder> orders) {
     final status = _filters[_selectedIndex].status;
-    if (status == null) return _orders;
-    return _orders.where((order) => order.status == status).toList();
+    if (status == null) return orders;
+    return orders.where((order) => order.status == status).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final orders = _visibleOrders;
-
     return Scaffold(
       backgroundColor: AppColors.semiWhiteColor3,
-      body: Column(
-        children: [
-          _OrdersHeader(count: _orders.length),
-          _OrdersTabsBar(
-            filters: _filters,
-            selectedIndex: _selectedIndex,
-            onSelected: (index) => setState(() => _selectedIndex = index),
-          ),
-          Expanded(
-            child: orders.isEmpty
-                ? const _EmptyOrders()
-                : ListView.separated(
-                    padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-                    itemCount: orders.length,
-                    separatorBuilder: (_, _) => Gap(14.h),
-                    itemBuilder: (context, index) => OrderCard(
-                      order: orders[index],
-                      onTap: () => _openDetails(orders[index]),
-                    ),
-                  ),
-          ),
-        ],
+      body: BlocBuilder<OrdersCubit, BaseState<PartnerOrder>>(
+        bloc: _cubit,
+        builder: (context, state) => Column(
+          children: [
+            _OrdersHeader(count: _cubit.totalCount),
+            _OrdersTabsBar(
+              filters: _filters,
+              selectedIndex: _selectedIndex,
+              onSelected: (index) => setState(() => _selectedIndex = index),
+            ),
+            Expanded(child: _buildList(state)),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildList(BaseState<PartnerOrder> state) {
+    // السحب للتحديث بيرجع لـ loading، فبنسيب اللستة القديمة ظاهرة لحد ما الجديدة توصل
+    if (state.items.isEmpty) {
+      if (state.isFailure) {
+        return _EmptyOrders(
+          text: 'orders_load_failed',
+          onRetry: _cubit.refresh,
+        );
+      }
+      if (!state.isSuccess) return const _OrdersSkeleton();
+    }
+
+    final orders = _visibleOrders(state.items);
+
+    return RefreshIndicator(
+      color: AppColors.primaryColor,
+      onRefresh: _cubit.refresh,
+      child: orders.isEmpty
+          ? LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                controller: _cubit.scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: constraints.maxHeight,
+                  child: const _EmptyOrders(),
+                ),
+              ),
+            )
+          : ListView.separated(
+              controller: _cubit.scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+              itemCount: orders.length + 1,
+              separatorBuilder: (_, _) => Gap(14.h),
+              itemBuilder: (context, index) {
+                if (index < orders.length) {
+                  return OrderCard(
+                    order: orders[index],
+                    onTap: () => _openDetails(orders[index]),
+                  );
+                }
+                return _ListFooter(
+                  state: state,
+                  onRetry: () => _cubit.fetch(page: state.page),
+                );
+              },
+            ),
     );
   }
 }
@@ -230,9 +292,12 @@ class _OrdersTabsBar extends StatelessWidget {
   }
 }
 
-/// بيظهر لما التاب المختار مفيهوش طلبات
+/// بيظهر لما التاب المختار مفيهوش طلبات أو الريكوست فشل
 class _EmptyOrders extends StatelessWidget {
-  const _EmptyOrders();
+  final String text;
+  final VoidCallback? onRetry;
+
+  const _EmptyOrders({this.text = 'no_orders_in_tab', this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -247,14 +312,73 @@ class _EmptyOrders extends StatelessWidget {
           ),
           Gap(12.h),
           LocalizedLabel(
-            text: 'no_orders_in_tab',
+            text: text,
             textAlign: TextAlign.center,
             style: TextStyles.darkRegular14.copyWith(
               color: AppColors.greyColor3,
             ),
           ),
+          if (onRetry != null) _RetryButton(onRetry: onRetry!),
         ],
       ),
+    );
+  }
+}
+
+/// آخر اللستة: لودينج الصفحة الجاية أو زرار إعادة المحاولة لو فشلت
+class _ListFooter extends StatelessWidget {
+  final BaseState<PartnerOrder> state;
+  final VoidCallback onRetry;
+
+  const _ListFooter({required this.state, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isLoadingMore) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryColor),
+        ),
+      );
+    }
+    if (state.isLoadingMoreFauilare) {
+      return Center(child: _RetryButton(onRetry: onRetry));
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+class _RetryButton extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RetryButton({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onRetry,
+      icon: const Icon(Icons.refresh, color: AppColors.primaryColor),
+      label: LocalizedLabel(
+        text: 'try_again',
+        style: TextStyles.darkBold14.copyWith(color: AppColors.primaryColor),
+      ),
+    );
+  }
+}
+
+/// لودينج أول صفحة
+class _OrdersSkeleton extends StatelessWidget {
+  const _OrdersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+      itemCount: 4,
+      separatorBuilder: (_, _) => Gap(14.h),
+      itemBuilder: (_, _) => const OrderCardSkeleton(),
     );
   }
 }

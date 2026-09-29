@@ -17,11 +17,22 @@ class LatestOrdersSection extends StatelessWidget {
   /// بيفتح تفاصيل الطلب اللي اتضغط عليه
   final ValueChanged<PartnerOrder> onOrderTap;
 
+  /// أول تحميل، بيظهر سكيلتون مكان الكروت
+  final bool isLoading;
+
+  /// الريكوست فشل ومفيش طلبات قديمة نعرضها
+  final bool hasError;
+
+  final VoidCallback? onRetry;
+
   const LatestOrdersSection({
     super.key,
     required this.orders,
     required this.onViewAll,
     required this.onOrderTap,
+    this.isLoading = false,
+    this.hasError = false,
+    this.onRetry,
   });
 
   @override
@@ -54,13 +65,72 @@ class LatestOrdersSection extends StatelessWidget {
           ],
         ),
         Gap(14.h),
-        ...orders.map(
-          (order) => Padding(
-            padding: EdgeInsets.only(bottom: 14.h),
-            child: OrderCard(order: order, onTap: () => onOrderTap(order)),
+        if (isLoading && orders.isEmpty)
+          ...List.generate(
+            3,
+            (_) => Padding(
+              padding: EdgeInsets.only(bottom: 14.h),
+              child: const OrderCardSkeleton(),
+            ),
+          )
+        else if (hasError && orders.isEmpty)
+          _SectionMessage(text: 'orders_load_failed', onRetry: onRetry)
+        else if (orders.isEmpty)
+          const _SectionMessage(text: 'no_orders')
+        else
+          ...orders.map(
+            (order) => Padding(
+              padding: EdgeInsets.only(bottom: 14.h),
+              child: OrderCard(order: order, onTap: () => onOrderTap(order)),
+            ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+/// رسالة مكان الكروت لما مفيش طلبات أو الريكوست فشل
+class _SectionMessage extends StatelessWidget {
+  final String text;
+  final VoidCallback? onRetry;
+
+  const _SectionMessage({required this.text, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 24.h),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 48.sp,
+              color: AppColors.greyColor5,
+            ),
+            Gap(8.h),
+            LocalizedLabel(
+              text: text,
+              textAlign: TextAlign.center,
+              style: TextStyles.darkRegular14.copyWith(
+                color: AppColors.greyColor3,
+              ),
+            ),
+            if (onRetry != null)
+              TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, color: AppColors.primaryColor),
+                label: LocalizedLabel(
+                  text: 'try_again',
+                  style: TextStyles.darkBold14.copyWith(
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

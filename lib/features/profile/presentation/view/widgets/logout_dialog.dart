@@ -12,9 +12,7 @@ Future<bool?> showLogoutDialog(BuildContext context) {
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: AppColors.whiteColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       contentPadding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 16.h),
       content: Column(
         mainAxisSize: MainAxisSize.min,

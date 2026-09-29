@@ -28,6 +28,19 @@ enum PartnerOrderStatus {
 
   const PartnerOrderStatus({required this.labelKey});
 
+  /// السيرفر بيرجّع الحالة كرقم في String زي "1"، نفس enum OrderStatus في الباك إند:
+  /// 1 New، 2 AwaitingPickup، 3 AtLaundryPendingMatch، 4 AdjustmentPendingApproval،
+  /// 5 InProgress، 6 Ready، 7 OutForDelivery، 8 Delivered، 9 Rejected
+  /// أي رقم تاني (زي 0) بنعتبره جديد
+  static PartnerOrderStatus fromApi(Object? value) =>
+      switch (int.tryParse('$value')) {
+        2 || 3 || 4 || 5 => PartnerOrderStatus.inProgress,
+        6 || 7 => PartnerOrderStatus.ready,
+        8 => PartnerOrderStatus.completed,
+        9 => PartnerOrderStatus.rejected,
+        _ => PartnerOrderStatus.newOrder,
+      };
+
   /// لون نص الشيب
   Color get foregroundColor => switch (this) {
     PartnerOrderStatus.newOrder => AppColors.primaryColor,
@@ -76,6 +89,16 @@ class PartnerOrderItem {
     this.imageUrl = '',
   });
 
+  /// { "id", "serviceItemName", "price", "quantity", "lineTotal", "isReturned" }
+  /// السيرفر مش بيرجّع نوع الخدمة ولا صورة، فبيفضلوا فاضيين
+  factory PartnerOrderItem.fromJson(Map<String, dynamic> json) {
+    return PartnerOrderItem(
+      name: json['serviceItemName'] as String? ?? '',
+      quantity: (json['quantity'] as num? ?? 0).toInt(),
+      serviceKey: '',
+    );
+  }
+
   /// الشكل المعروض في الشيب: "2 قميص"
   String get display => '$quantity $name';
 }
@@ -93,6 +116,18 @@ enum PartnerOrderStage {
   final String labelKey;
 
   const PartnerOrderStage({required this.labelKey});
+
+  /// آخر مرحلة وصلها الطلب حسب رقم الحالة اللي جاي من السيرفر
+  /// شوف [PartnerOrderStatus.fromApi] لمعنى كل رقم
+  static PartnerOrderStage fromApi(Object? value) =>
+      switch (int.tryParse('$value')) {
+        2 => PartnerOrderStage.accepted,
+        3 || 4 => PartnerOrderStage.pickedUp,
+        5 => PartnerOrderStage.cleaning,
+        6 || 7 => PartnerOrderStage.ready,
+        8 => PartnerOrderStage.delivered,
+        _ => PartnerOrderStage.placed,
+      };
 
   /// المرحلة اللي بعدها، وnull لو دي آخر مرحلة
   PartnerOrderStage? get next {
@@ -113,6 +148,9 @@ enum PartnerOrderStage {
 
 /// طلب واحد زي ما بيتعرض في كارت الطلبات
 class PartnerOrder {
+  /// الـ id اللي في السيرفر، 0 للداتا الوهمية
+  final int id;
+
   /// رقم الطلب من غير علامة #
   final String number;
 
@@ -144,6 +182,7 @@ class PartnerOrder {
   final PartnerOrderStage stage;
 
   const PartnerOrder({
+    this.id = 0,
     required this.number,
     required this.customerName,
     required this.items,
@@ -157,24 +196,57 @@ class PartnerOrder {
     this.stage = PartnerOrderStage.placed,
   });
 
+  /// طلب واحد من ريسبونس GET api/laundry/orders
+  factory PartnerOrder.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as int? ?? 0;
+    return PartnerOrder(
+      id: id,
+      number: '$id',
+      customerName: json['customerName'] as String? ?? '',
+      customerPhone: json['customerPhoneNumber'] as String? ?? '',
+      items: (json['items'] as List? ?? [])
+          .map(
+            (item) => PartnerOrderItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+      address: json['deliveryAddress'] as String? ?? '',
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      total: (json['totalPrice'] as num? ?? 0).toDouble(),
+      status: PartnerOrderStatus.fromApi(json['status']),
+      stage: PartnerOrderStage.fromApi(json['status']),
+    );
+  }
+
   /// بينسخ الطلب بمرحلة جديدة والحالة بتتحدث معاها تلقائياً
-  PartnerOrder copyWithStage(PartnerOrderStage newStage) => PartnerOrder(
+  PartnerOrder copyWithStage(PartnerOrderStage newStage) =>
+      _copyWith(status: newStage.status, stage: newStage);
+
+  /// المرفوض ملوش مرحلة في التايم لاين، فالمرحلة بتفضل زي ما هي
+  PartnerOrder markRejected() =>
+      _copyWith(status: PartnerOrderStatus.rejected, stage: stage);
+
+  PartnerOrder _copyWith({
+    required PartnerOrderStatus status,
+    required PartnerOrderStage stage,
+  }) => PartnerOrder(
+    id: id,
     number: number,
     customerName: customerName,
     items: items,
     address: address,
     createdAt: createdAt,
     total: total,
-    status: newStage.status,
+    status: status,
     customerPhone: customerPhone,
     distanceKm: distanceKm,
     estimatedHours: estimatedHours,
-    stage: newStage,
+    stage: stage,
   );
 
   /// إجمالي عدد القطع في الطلب
-  int get itemsCount =>
-      items.fold(0, (sum, item) => sum + item.quantity);
+  int get itemsCount => items.fold(0, (sum, item) => sum + item.quantity);
 
   /// "ORD-10245#" زي الديزاين
   String get displayNumber => '$number#';
@@ -185,11 +257,13 @@ class PartnerOrder {
   /// "4 ساعات"
   String get displayEta => 'hours_count'.plural(estimatedHours);
 
-  /// "85 ر.س" — السعر من غير كسور لو رقم صحيح
+  /// "85 د.ل" — السعر من غير كسور لو رقم صحيح
   String get displayTotal {
     final isWhole = total == total.roundToDouble();
-    final amount = isWhole ? total.toInt().toString() : total.toStringAsFixed(2);
-    return '$amount ${'currency_sar'.tr()}';
+    final amount = isWhole
+        ? total.toInt().toString()
+        : total.toStringAsFixed(2);
+    return '$amount ${'currency'.tr()}';
   }
 
   /// "اليوم، 10:45 ص" أو "أمس، 3:20 م" أو التاريخ لو أقدم من كده

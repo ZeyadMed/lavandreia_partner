@@ -56,7 +56,9 @@ class LocationPickerCard extends StatelessWidget {
         child: Column(
           children: [
             Icon(
-              _hasLocation ? Icons.location_on : Icons.add_location_alt_outlined,
+              _hasLocation
+                  ? Icons.location_on
+                  : Icons.add_location_alt_outlined,
               size: 34.sp,
               color: _hasLocation
                   ? AppColors.primaryColor

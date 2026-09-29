@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
+
 /// بيانات المغسلة اللي بتتعرض في صفحة حسابي وبتتعدل من صفحة التعديل
 /// mutable عن قصد زي RegisterData لأن شاشة التعديل بتعدل عليها مباشرة
 class LaundryProfile {
@@ -56,6 +58,23 @@ class LaundryProfile {
     this.coverImageUrl,
     this.isAvailable = true,
   });
+
+  /// من بيانات السيرفر، عشان شاشة التعديل تفتح مليانة
+  /// الرقم المحلي هو الرقم من غير كود ليبيا
+  factory LaundryProfile.fromPartner(PartnerProfile partner) => LaundryProfile(
+    laundryName: partner.name,
+    ownerName: partner.ownerName,
+    phone: partner.phoneNumber,
+    phoneLocal: partner.phoneNumber.replaceFirst(RegExp(r'^\+218'), ''),
+    email: '',
+    areaName: partner.cityName,
+    workingHours: '',
+    cityId: partner.cityId?.toString(),
+    latitude: partner.latitude,
+    longitude: partner.longitude,
+    pickedAddress: partner.address,
+    coverImageUrl: partner.imageUrl,
+  );
 
   bool get hasLocationOnMap => latitude != null && longitude != null;
 

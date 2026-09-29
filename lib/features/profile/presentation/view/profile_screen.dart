@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
@@ -10,14 +12,17 @@ import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/models/laundry_profile.dart';
-import 'package:lavanderia_partner/features/profile/data/profile_mock_data.dart';
+import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
+import 'package:lavanderia_partner/features/profile/data/profile_data_source.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/edit_laundry_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/legal_page_screen.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view/reviews_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/support_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/working_hours_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/logout_dialog.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_header.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_widgets.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view_model/profile_cubit.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,18 +32,28 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  /// مؤقتاً من الداتا الوهمية لحد ما نربط الـ API
-  LaundryProfile _profile = ProfileMockData.profile;
+  /// بيانات المغسلة من GET api/laundry/profile
+  final ProfileCubit _profileCubit = ProfileCubit(getIt<ProfileDataSource>())
+    ..fetchDataMap();
 
-  /// بيفتح صفحة التعديل وبيحدّث البيانات لو اليوزر حفظ
+  @override
+  void dispose() {
+    _profileCubit.close();
+    super.dispose();
+  }
+
+  /// بيفتح صفحة التعديل ببيانات السيرفر، ولو اليوزر حفظ بنجيب البروفايل تاني
   /// تعديل الموقع جوه الصفحة دي مش صفحة منفصلة
-  Future<void> _openEdit() async {
+  Future<void> _openEdit(PartnerProfile profile) async {
     final updated = await Navigator.of(context).push<LaundryProfile>(
-      MaterialPageRoute(builder: (_) => EditLaundryScreen(profile: _profile)),
+      MaterialPageRoute(
+        builder: (_) =>
+            EditLaundryScreen(profile: LaundryProfile.fromPartner(profile)),
+      ),
     );
     if (updated == null || !mounted) return;
 
-    setState(() => _profile = updated);
+    _profileCubit.fetchDataMap();
   }
 
   void _open(Widget screen) {
@@ -63,52 +78,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.semiWhiteColor3,
-      body: Column(
-        children: [
-          ProfileHeader(profile: _profile),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildInfoCard(),
-                  Gap(16.h),
-                  _buildMenuCard(),
-                  Gap(16.h),
-                  _LogoutButton(onTap: _logout),
-                ],
+      body: BlocBuilder<ProfileCubit, BaseState<PartnerProfile>>(
+        bloc: _profileCubit,
+        // بنحتفظ بالبيانات القديمة وهي بتتحدث عشان الصفحة مارجعش فاضية
+        buildWhen: (previous, current) => current.data != null,
+        builder: (context, state) {
+          final profile = state.data;
+          return Column(
+            children: [
+              ProfileHeader(profile: profile),
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primaryColor,
+                  onRefresh: _profileCubit.fetchDataMap,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildInfoCard(profile),
+                        Gap(16.h),
+                        _buildMenuCard(profile),
+                        Gap(16.h),
+                        _LogoutButton(onTap: _logout),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 
-  /// كارت بيانات التواصل والعنوان وساعات العمل
-  Widget _buildInfoCard() {
+  /// كارت بيانات التواصل والعنوان، وبيعرض — لحد ما البيانات توصل
+  Widget _buildInfoCard(PartnerProfile? profile) {
     return ProfileCard(
       children: [
         ProfileInfoRow(
           icon: Icons.phone_outlined,
           labelKey: 'phone_number',
-          value: _profile.phone,
+          value: profile?.phoneNumber ?? '',
         ),
         ProfileInfoRow(
-          icon: Icons.mail_outline,
-          labelKey: 'email',
-          value: _profile.email,
+          icon: Icons.person_outline,
+          labelKey: 'owner_phone',
+          value: profile?.ownerPhoneNumber ?? '',
+        ),
+        ProfileInfoRow(
+          icon: Icons.location_city_outlined,
+          labelKey: 'city',
+          value: profile?.cityName ?? '',
         ),
         ProfileInfoRow(
           icon: Icons.location_on_outlined,
           labelKey: 'address',
-          value: _profile.displayAddress,
-        ),
-        ProfileInfoRow(
-          icon: Icons.access_time,
-          labelKey: 'working_hours',
-          value: _profile.workingHours,
+          value: profile?.address ?? '',
           showDivider: false,
         ),
       ],
@@ -116,18 +144,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// ليستة الإعدادات
-  Widget _buildMenuCard() {
+  Widget _buildMenuCard(PartnerProfile? profile) {
     return ProfileCard(
       children: [
         ProfileMenuTile(
           icon: Icons.edit_outlined,
           labelKey: 'edit_laundry_info',
-          onTap: _openEdit,
+          // التعديل بيستنى البيانات توصل الأول
+          onTap: () {
+            if (profile != null) _openEdit(profile);
+          },
         ),
         ProfileMenuTile(
           icon: Icons.access_time,
           labelKey: 'working_hours',
           onTap: () => _open(const WorkingHoursScreen()),
+        ),
+        ProfileMenuTile(
+          icon: Icons.star_outline_rounded,
+          labelKey: 'my_reviews',
+          onTap: () => _open(const ReviewsScreen()),
         ),
         ProfileMenuTile(
           icon: Icons.headset_mic_outlined,

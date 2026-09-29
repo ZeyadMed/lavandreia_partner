@@ -13,7 +13,8 @@ class LoginDataSource {
   /// بيبعت { phoneNumber, password, rememberMe, deviceToken } وبيحفظ التوكنز
   /// rememberMe دايما true عشان الجلسة تفضل مستمرة
   /// deviceToken هو الـ FCM عشان السيرفر يبعت إشعارات للجهاز ده
-  Future<Either<Failure, void>> login({
+  /// بيرجّع hasServices من البروفايل عشان نعرف نودّي المغسلة لإعداد الخدمات ولا لأ
+  Future<Either<Failure, bool>> login({
     required String phoneNumber,
     required String password,
   }) async {
@@ -49,7 +50,11 @@ class LoginDataSource {
       accessToken: accessToken,
       refreshToken: payload['refreshToken'] as String? ?? '',
     );
-    return const Right(null);
+
+    final profile = payload['profile'];
+    final hasServices =
+        profile is Map<String, dynamic> && profile['hasServices'] == true;
+    return Right(hasServices);
   }
 
   /// بيبعت { refreshToken } عشان السيرفر يلغي الجلسة

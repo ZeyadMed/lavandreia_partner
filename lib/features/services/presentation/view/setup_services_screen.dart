@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
-import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
@@ -21,7 +20,7 @@ import 'package:lavanderia_partner/features/services/data/models/service_categor
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/services_skeleton.dart';
 import 'package:lavanderia_partner/features/services/presentation/view_model/services_cubits.dart';
 
-/// شاشة إعداد الخدمات، بتظهر مرة واحدة بعد أول تسجيل دخول
+/// شاشة إعداد الخدمات، بتظهر بعد اللوجين لو السيرفر رجّع hasServices بـ false
 /// الخدمات بتيجي من السيرفر، وكل خدمة بتتفتح على أصنافها وكل صنف ليه سعر
 class SetupServicesScreen extends StatelessWidget {
   const SetupServicesScreen({super.key});
@@ -81,13 +80,8 @@ class _SetupServicesViewState extends State<_SetupServicesView> {
     context.read<SaveMyServicesCubit>().save(prices);
   }
 
-  Future<void> _onSaveStateChanged(
-    BuildContext context,
-    BaseState<void> state,
-  ) async {
+  void _onSaveStateChanged(BuildContext context, BaseState<void> state) {
     if (state.isSuccess) {
-      await CacheManager.setServicesSetupCompleted();
-      if (!context.mounted) return;
       context.go(AppRouter.initialRoot);
       return;
     }
@@ -415,7 +409,7 @@ class _RetryMessage extends StatelessWidget {
 }
 
 /// نفس الهيدر الأزرق بتاع التسجيل عشان الشاشة تبان تكملة للـ flow
-/// من غير زرار رجوع لأن الإعداد لازم يخلص قبل الدخول للرئيسية
+/// من غير زرار رجوع، وفيه زرار تخطي بيودي للرئيسية على طول
 class _SetupHeader extends StatelessWidget {
   const _SetupHeader();
 
@@ -433,9 +427,28 @@ class _SetupHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LocalizedLabel(
-            text: 'setup_services_title',
-            style: TextStyles.whiteBold15.copyWith(fontSize: 18.sp),
+          Row(
+            children: [
+              Expanded(
+                child: LocalizedLabel(
+                  text: 'setup_services_title',
+                  style: TextStyles.whiteBold15.copyWith(fontSize: 18.sp),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go(AppRouter.initialRoot),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.whiteColor,
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: LocalizedLabel(
+                  text: 'skip',
+                  style: TextStyles.whiteBold14,
+                ),
+              ),
+            ],
           ),
           Gap(4.h),
           LocalizedLabel(

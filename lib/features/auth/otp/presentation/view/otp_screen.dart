@@ -100,7 +100,7 @@ class _OtpScreenState extends State<OtpScreen> {
       },
       (loggedIn) {
         if (loggedIn) {
-          // أول دخول للمغسلة، فبيروح يعدّ الخدمات قبل الرئيسية
+          // مغسلة لسه متسجلة جديد فمفيش خدمات، بتروح تعدّها قبل الرئيسية
           context.go(AppRouter.setupServices);
           return;
         }

@@ -26,6 +26,9 @@ abstract interface class Endpoints {
   static const String refreshToken = '/api/auth/refresh-token';
 
   // ****************************** Laundry ********************************
+  /// بيانات المغسلة: الاسم والصورة والعنوان وغيرهم
+  static const String laundryProfile = 'api/laundry/profile';
+
   /// كل الخدمات اللي المغسلة تقدر تقدمها
   static const String laundryServices = 'api/laundry/services';
 
@@ -41,8 +44,18 @@ abstract interface class Endpoints {
   /// و PUT بيستقبل { workingHours: [{ dayOfWeek, openTime, closeTime, isClosed }] }
   static const String workingHours = 'api/laundry/working-hours';
 
+  /// تقييمات العملاء للمغسلة، بتقبل ?PageIndex و ?PageSize
+  static const String laundryReviews = 'api/laundry/reviews';
+
   static String serviceItems(int serviceId) =>
       servicesItems.replaceFirst('{serviceId}', '$serviceId');
 
-  static const String orders = '/api/laundry/orders';
+  /// طلبات المغسلة، بتقبل ?PageIndex و ?PageSize
+  static const String orders = 'api/laundry/orders';
+
+  /// قبول الطلب الجديد، POST من غير body
+  static String acceptOrder(int orderId) => '$orders/$orderId/accept';
+
+  /// رفض الطلب الجديد، POST من غير body
+  static String rejectOrder(int orderId) => '$orders/$orderId/reject';
 }
