@@ -16,6 +16,7 @@ import 'package:lavanderia_partner/features/notifications/data/models/partner_no
 import 'package:lavanderia_partner/features/notifications/data/notifications_data_source.dart';
 import 'package:lavanderia_partner/features/notifications/presentation/view/widgets/clear_notifications_dialog.dart';
 import 'package:lavanderia_partner/features/notifications/presentation/view_model/notifications_cubit.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/order_details_screen.dart';
 
 /// صفحة الإشعارات: صفحة ورا صفحة مع السكرول، والسحب لتحت بيحدثها
 class NotificationsScreen extends StatefulWidget {
@@ -41,8 +42,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (failure != null && mounted) context.showErrorMessage(failure.message);
   }
 
-  Future<void> _markAsRead(PartnerNotification notification) async =>
-      _showFailure(await _cubit.markAsRead(notification));
+  /// بيعلّم الإشعار مقروء، ولو عن طلب بيفتح تفاصيله
+  Future<void> _open(PartnerNotification notification) async {
+    final orderId = notification.orderId;
+    if (orderId != null) openOrderDetailsById(context, orderId);
+    _showFailure(await _cubit.markAsRead(notification));
+  }
 
   Future<void> _delete(PartnerNotification notification) async =>
       _showFailure(await _cubit.delete(notification));
@@ -133,7 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             onDismissed: (_) => _delete(notification),
             child: _NotificationCard(
               notification: notification,
-              onTap: () => _markAsRead(notification),
+              onTap: () => _open(notification),
             ),
           ),
         ),

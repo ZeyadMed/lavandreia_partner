@@ -18,6 +18,7 @@ import 'package:lavanderia_partner/features/profile/data/profile_data_source.dar
 import 'package:lavanderia_partner/features/profile/data/reviews_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/working_hours_data_source.dart';
 import 'package:lavanderia_partner/features/services/data/laundry_services_data_source.dart';
+import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
 import 'package:lavanderia_partner/features/wallet/data/wallet_data_source.dart';
 // import 'package:lavanderia_partner/features/home/presentation/view_model/location_controller.dart';
 // import 'package:lavanderia_partner/features/laundry_details/presentation/view_model/selected_services_controller.dart';
@@ -109,6 +110,10 @@ class SharedServiceLocator {
 
     getIt.registerLazySingleton<OrdersDataSource>(
       () => OrdersDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<TripsDataSource>(
+      () => TripsDataSource(getIt<GenericDataSource>()),
     );
 
     getIt.registerLazySingleton<ProfileDataSource>(

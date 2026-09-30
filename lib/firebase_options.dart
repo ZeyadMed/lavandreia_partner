@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBRHcY3pZFlg2P-OjIY_Qs1rCM-6FQ93UQ',
-    appId: '1:550015810677:android:6a85b59f073a0a328b0c3c',
+    appId: '1:550015810677:android:d8ce3080c1abe30e8b0c3c',
     messagingSenderId: '550015810677',
     projectId: 'lavandria-b3e46',
     storageBucket: 'lavandria-b3e46.firebasestorage.app',
@@ -59,10 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAkIJyMAlYgPpyRHbgyeJSd-ax0Jyy_aiM',
-    appId: '1:550015810677:ios:eb31afb83d0a60c18b0c3c',
+    appId: '1:550015810677:ios:a5af2f4b8c49f5e78b0c3c',
     messagingSenderId: '550015810677',
     projectId: 'lavandria-b3e46',
     storageBucket: 'lavandria-b3e46.firebasestorage.app',
-    iosBundleId: 'com.example.lavanderiaPartner',
+    iosBundleId: 'com.theone.lavanderiaPartner',
   );
+
 }

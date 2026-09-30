@@ -17,12 +17,13 @@ import 'package:lavanderia_partner/features/orders/presentation/view/widgets/ord
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 
 /// فلتر التابات اللي فوق في صفحة الطلبات
-/// null في [status] معناها تاب "الكل"
+/// كل تاب بيجمع كذا حالة، و null في [statuses] معناها تاب "الكل"
+/// مفيش تاب للمرفوض لأن السيرفر بيشيله من طلبات المغسلة
 class _OrdersFilter {
   final String labelKey;
-  final PartnerOrderStatus? status;
+  final Set<PartnerOrderStatus>? statuses;
 
-  const _OrdersFilter({required this.labelKey, this.status});
+  const _OrdersFilter({required this.labelKey, this.statuses});
 }
 
 class OrdersScreen extends StatefulWidget {
@@ -40,29 +41,32 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _OrdersFilter(labelKey: 'all'),
     _OrdersFilter(
       labelKey: 'orders_tab_new',
-      status: PartnerOrderStatus.newOrder,
+      statuses: {PartnerOrderStatus.newOrder},
     ),
     _OrdersFilter(
       labelKey: 'orders_tab_in_progress',
-      status: PartnerOrderStatus.inProgress,
+      statuses: {
+        PartnerOrderStatus.awaitingPickup,
+        PartnerOrderStatus.atLaundryPendingMatch,
+        PartnerOrderStatus.adjustmentPendingApproval,
+        PartnerOrderStatus.inProgress,
+      },
     ),
     _OrdersFilter(
       labelKey: 'orders_tab_ready',
-      status: PartnerOrderStatus.ready,
+      statuses: {PartnerOrderStatus.ready, PartnerOrderStatus.outForDelivery},
     ),
     _OrdersFilter(
       labelKey: 'orders_tab_completed',
-      status: PartnerOrderStatus.completed,
-    ),
-    _OrdersFilter(
-      labelKey: 'orders_tab_rejected',
-      status: PartnerOrderStatus.rejected,
+      statuses: {PartnerOrderStatus.delivered},
     ),
   ];
 
   /// لو الحالة اللي جاية مش موجودة في التابات بنفتح على "الكل"
-  late int _selectedIndex = _filters
-      .indexWhere((filter) => filter.status == widget.initialStatus)
+  late int _selectedIndex = _indexOf(widget.initialStatus);
+
+  static int _indexOf(PartnerOrderStatus? status) => _filters
+      .indexWhere((filter) => filter.statuses?.contains(status) ?? false)
       .clamp(0, _filters.length - 1);
 
   late final OrdersCubit _cubit = OrdersCubit(getIt<OrdersDataSource>())
@@ -76,11 +80,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   void initState() {
     super.initState();
     _changesSubscription = OrdersCubit.changes.listen((order) {
-      if (order.stage != PartnerOrderStage.accepted || !mounted) return;
-      final index = _filters.indexWhere(
-        (filter) => filter.status == PartnerOrderStatus.inProgress,
-      );
-      setState(() => _selectedIndex = index);
+      if (order.status != PartnerOrderStatus.awaitingPickup || !mounted) {
+        return;
+      }
+      setState(() => _selectedIndex = _indexOf(order.status));
     });
   }
 
@@ -100,9 +103,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   /// الفلترة على الطلبات اللي اتحملت بس لأن الـ API مش بياخد الحالة
   List<PartnerOrder> _visibleOrders(List<PartnerOrder> orders) {
-    final status = _filters[_selectedIndex].status;
-    if (status == null) return orders;
-    return orders.where((order) => order.status == status).toList();
+    final statuses = _filters[_selectedIndex].statuses;
+    if (statuses == null) return orders;
+    return orders.where((order) => statuses.contains(order.status)).toList();
   }
 
   @override

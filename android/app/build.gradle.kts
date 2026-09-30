@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.lavanderia_partner"
+    namespace = "com.theone.lavanderia_partner"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.lavanderia_partner"
+        applicationId = "com.theone.lavanderia_partner"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

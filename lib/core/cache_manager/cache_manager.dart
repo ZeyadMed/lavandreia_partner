@@ -1,4 +1,6 @@
 import 'dart:developer';
+import 'dart:io';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -76,7 +78,21 @@ class CacheManager {
 
   static Future<String?> fetchAndSaveFcmToken() async {
     try {
-      String? fcmToken = await FirebaseMessaging.instance.getToken();
+      final messaging = FirebaseMessaging.instance;
+      // في iOS الـ FCM token مش بيتعمل غير بعد ما Apple تدي الـ APNs token،
+      // وده بياخد ثواني بعد إذن الإشعارات، فبنستناه شوية قبل ما نطلب الـ FCM
+      if (Platform.isIOS) {
+        String? apnsToken = await messaging.getAPNSToken();
+        for (var i = 0; apnsToken == null && i < 5; i++) {
+          await Future.delayed(const Duration(seconds: 1));
+          apnsToken = await messaging.getAPNSToken();
+        }
+        if (apnsToken == null) {
+          log('Failed to fetch FCM Token: APNs token is not available');
+          return null;
+        }
+      }
+      String? fcmToken = await messaging.getToken();
       if (fcmToken != null) {
         await saveFcmTokenToken(fcmToken);
         log('FCM Token fetched and saved: $fcmToken');

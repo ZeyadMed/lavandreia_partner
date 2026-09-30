@@ -1,4 +1,4 @@
-package com.example.lavanderia_partner
+package com.theone.lavanderia_partner
 
 import io.flutter.embedding.android.FlutterActivity
 

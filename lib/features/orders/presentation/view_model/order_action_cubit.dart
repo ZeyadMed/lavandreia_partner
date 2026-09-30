@@ -6,9 +6,9 @@ import 'package:lavanderia_partner/features/orders/data/models/partner_order.dar
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 
-enum OrderAction { accept, reject }
+enum OrderAction { accept, reject, confirmMatch, markReady }
 
-/// قبول أو رفض الطلب الجديد
+/// الأكشنز اللي المغسلة بتعملها على الطلب من غير body
 /// لما الريكوست ينجح state.data بيبقى الطلب بحالته الجديدة
 class OrderActionCubit extends Cubit<BaseState<PartnerOrder>> {
   final OrdersDataSource _dataSource;
@@ -21,13 +21,27 @@ class OrderActionCubit extends Cubit<BaseState<PartnerOrder>> {
   Future<void> accept(PartnerOrder order) => _run(
     OrderAction.accept,
     () => _dataSource.acceptOrder(order.id),
-    order.copyWithStage(PartnerOrderStage.accepted),
+    order.copyWith(status: PartnerOrderStatus.awaitingPickup),
   );
 
   Future<void> reject(PartnerOrder order) => _run(
     OrderAction.reject,
     () => _dataSource.rejectOrder(order.id),
-    order.markRejected(),
+    order.copyWith(status: PartnerOrderStatus.rejected),
+  );
+
+  /// الهدوم اللي وصلت مطابقة للطلب
+  Future<void> confirmMatch(PartnerOrder order) => _run(
+    OrderAction.confirmMatch,
+    () => _dataSource.confirmMatch(order.id),
+    order.copyWith(status: PartnerOrderStatus.inProgress),
+  );
+
+  /// الغسيل خلص
+  Future<void> markReady(PartnerOrder order) => _run(
+    OrderAction.markReady,
+    () => _dataSource.markReady(order.id),
+    order.copyWith(status: PartnerOrderStatus.ready),
   );
 
   Future<void> _run(

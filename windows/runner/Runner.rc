@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "lavanderia_partner" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "lavanderia_partner" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.theone. All rights reserved." "\0"
             VALUE "OriginalFilename", "lavanderia_partner.exe" "\0"
             VALUE "ProductName", "lavanderia_partner" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

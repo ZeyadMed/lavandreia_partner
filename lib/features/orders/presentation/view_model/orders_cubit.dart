@@ -25,10 +25,21 @@ class OrdersCubit extends GenericPaginationCubit<PartnerOrder> {
   /// بتتنادى بعد أي تعديل على الطلب زي القبول أو الرفض أو تحديث الحالة
   static void notifyChanged(PartnerOrder order) => _changes.add(order);
 
+  /// الإشعارات بتبعت هنا رقم الطلب اللي اتغير على السيرفر من ناحية حد تاني
+  /// زي العميل أو الدليفري، وnull لو مش معروف زي طلب جديد لسه ماتحملش
+  static final StreamController<int?> _serverChanges =
+      StreamController<int?>.broadcast();
+
+  static Stream<int?> get serverChanges => _serverChanges.stream;
+
+  static void notifyServerChanged(int? orderId) => _serverChanges.add(orderId);
+
   late final StreamSubscription<PartnerOrder> _changesSubscription;
+  late final StreamSubscription<int?> _serverChangesSubscription;
 
   OrdersCubit(this._dataSource, {this.pageSize = 10}) {
     _changesSubscription = changes.listen(_applyChange);
+    _serverChangesSubscription = serverChanges.listen((_) => refresh());
   }
 
   @override
@@ -56,6 +67,7 @@ class OrdersCubit extends GenericPaginationCubit<PartnerOrder> {
   @override
   Future<void> close() {
     _changesSubscription.cancel();
+    _serverChangesSubscription.cancel();
     return super.close();
   }
 }

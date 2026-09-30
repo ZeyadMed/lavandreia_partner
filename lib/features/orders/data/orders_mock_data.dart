@@ -68,7 +68,6 @@ abstract final class OrdersMockData {
       status: PartnerOrderStatus.inProgress,
       distanceKm: 2.3,
       estimatedHours: 4,
-      stage: PartnerOrderStage.pickedUp,
     ),
     PartnerOrder(
       number: 'ORD-10244',
@@ -94,7 +93,6 @@ abstract final class OrdersMockData {
       status: PartnerOrderStatus.ready,
       distanceKm: 5.1,
       estimatedHours: 2,
-      stage: PartnerOrderStage.ready,
     ),
     PartnerOrder(
       number: 'ORD-10243',
@@ -111,10 +109,9 @@ abstract final class OrdersMockData {
       address: 'الزمالك، القاهرة',
       createdAt: _at(daysAgo: 1, hour: 11),
       total: 150,
-      status: PartnerOrderStatus.completed,
+      status: PartnerOrderStatus.delivered,
       distanceKm: 8.4,
       estimatedHours: 24,
-      stage: PartnerOrderStage.delivered,
     ),
     PartnerOrder(
       number: 'ORD-10242',
@@ -134,7 +131,6 @@ abstract final class OrdersMockData {
       status: PartnerOrderStatus.rejected,
       distanceKm: 6.7,
       estimatedHours: 48,
-      stage: PartnerOrderStage.placed,
     ),
     PartnerOrder(
       number: 'ORD-10241',
@@ -160,7 +156,6 @@ abstract final class OrdersMockData {
       status: PartnerOrderStatus.newOrder,
       distanceKm: 3.9,
       estimatedHours: 12,
-      stage: PartnerOrderStage.placed,
     ),
     PartnerOrder(
       number: 'ORD-10240',
@@ -183,10 +178,9 @@ abstract final class OrdersMockData {
       address: 'الشيخ زايد، الجيزة',
       createdAt: _at(daysAgo: 3, hour: 17, minute: 40),
       total: 175,
-      status: PartnerOrderStatus.completed,
+      status: PartnerOrderStatus.delivered,
       distanceKm: 11.2,
       estimatedHours: 24,
-      stage: PartnerOrderStage.delivered,
     ),
   ];
 

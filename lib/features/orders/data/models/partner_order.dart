@@ -4,75 +4,155 @@ library;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
+import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 
-/// حالة الطلب عند المغسلة
+/// حالة الطلب، نفس enum OrderStatus في الباك إند بالترتيب
 /// كل حالة ليها لون وخلفية للشيب اللي بيظهر فوق يمين الكارت
 enum PartnerOrderStatus {
   /// طلب جديد لسه المغسلة ماردتش عليه
-  newOrder(labelKey: 'order_status_new'),
+  newOrder(apiName: 'New', labelKey: 'order_status_new'),
 
-  /// المغسلة قبلت الطلب وشغالة فيه
-  inProgress(labelKey: 'order_status_in_progress'),
+  /// المغسلة قبلت ومستنية الدليفري يجيب الهدوم من العميل
+  awaitingPickup(
+    apiName: 'AwaitingPickup',
+    labelKey: 'order_status_awaiting_pickup',
+  ),
 
-  /// الغسيل خلص ومستني التسليم
-  ready(labelKey: 'order_status_ready'),
+  /// الهدوم وصلت المغسلة ولسه متعدتش
+  atLaundryPendingMatch(
+    apiName: 'AtLaundryPendingMatch',
+    labelKey: 'order_status_pending_match',
+  ),
 
-  /// الطلب اتسلم وخلص
-  completed(labelKey: 'order_status_completed'),
+  /// المغسلة بعتت تعديل ومستنية رد العميل
+  adjustmentPendingApproval(
+    apiName: 'AdjustmentPendingApproval',
+    labelKey: 'order_status_adjustment_pending',
+  ),
+
+  /// المغسلة شغالة في الغسيل
+  inProgress(apiName: 'InProgress', labelKey: 'order_status_in_progress'),
+
+  /// الغسيل خلص ومستني دليفري التسليم
+  ready(apiName: 'Ready', labelKey: 'order_status_ready'),
+
+  /// الدليفري في الطريق للعميل
+  outForDelivery(
+    apiName: 'OutForDelivery',
+    labelKey: 'order_status_out_for_delivery',
+  ),
+
+  /// العميل استلم وخلص
+  delivered(apiName: 'Delivered', labelKey: 'order_status_completed'),
 
   /// المغسلة رفضت الطلب
-  rejected(labelKey: 'order_status_rejected');
+  rejected(apiName: 'Rejected', labelKey: 'order_status_rejected');
+
+  /// الاسم زي ما الباك إند بيبعته
+  final String apiName;
 
   /// مفتاح الترجمة اللي بيتعرض في الشيب
   final String labelKey;
 
-  const PartnerOrderStatus({required this.labelKey});
+  const PartnerOrderStatus({required this.apiName, required this.labelKey});
 
-  /// السيرفر بيرجّع الحالة كرقم في String زي "1"، نفس enum OrderStatus في الباك إند:
-  /// 1 New، 2 AwaitingPickup، 3 AtLaundryPendingMatch، 4 AdjustmentPendingApproval،
-  /// 5 InProgress، 6 Ready، 7 OutForDelivery، 8 Delivered، 9 Rejected
-  /// أي رقم تاني (زي 0) بنعتبره جديد
-  static PartnerOrderStatus fromApi(Object? value) =>
-      switch (int.tryParse('$value')) {
-        2 || 3 || 4 || 5 => PartnerOrderStatus.inProgress,
-        6 || 7 => PartnerOrderStatus.ready,
-        8 => PartnerOrderStatus.completed,
-        9 => PartnerOrderStatus.rejected,
-        _ => PartnerOrderStatus.newOrder,
-      };
+  /// السيرفر ممكن يرجّع الحالة كرقم زي "1" أو كاسم زي "New"
+  /// الأرقام من 1 لـ 9 بنفس ترتيب الحالات هنا، وأي حاجة تانية بنعتبرها جديد
+  static PartnerOrderStatus fromApi(Object? value) {
+    final number = int.tryParse('$value');
+    if (number != null) {
+      return number >= 1 && number <= values.length
+          ? values[number - 1]
+          : PartnerOrderStatus.newOrder;
+    }
+    final name = '$value'.toLowerCase();
+    for (final status in values) {
+      if (status.apiName.toLowerCase() == name) return status;
+    }
+    return PartnerOrderStatus.newOrder;
+  }
 
   /// لون نص الشيب
   Color get foregroundColor => switch (this) {
     PartnerOrderStatus.newOrder => AppColors.primaryColor,
+    PartnerOrderStatus.awaitingPickup => const Color(0xff6B4FD8),
+    PartnerOrderStatus.atLaundryPendingMatch => const Color(0xffC2410C),
+    PartnerOrderStatus.adjustmentPendingApproval => const Color(0xffA21CAF),
     PartnerOrderStatus.inProgress => const Color(0xffB26A00),
     PartnerOrderStatus.ready => const Color(0xff0E8C4F),
-    PartnerOrderStatus.completed => const Color(0xff2F8F5B),
+    PartnerOrderStatus.outForDelivery => const Color(0xff0E7490),
+    PartnerOrderStatus.delivered => const Color(0xff2F8F5B),
     PartnerOrderStatus.rejected => AppColors.redColor2,
   };
 
   /// خلفية الشيب، نفس لون النص بس فاتح
   Color get backgroundColor => switch (this) {
     PartnerOrderStatus.newOrder => const Color(0xffE7EFFD),
+    PartnerOrderStatus.awaitingPickup => const Color(0xffEEEAFB),
+    PartnerOrderStatus.atLaundryPendingMatch => const Color(0xffFDEBDD),
+    PartnerOrderStatus.adjustmentPendingApproval => const Color(0xffF9E8FB),
     PartnerOrderStatus.inProgress => const Color(0xffFDF3D7),
     PartnerOrderStatus.ready => const Color(0xffE3F5EA),
-    PartnerOrderStatus.completed => const Color(0xffE6F4EC),
+    PartnerOrderStatus.outForDelivery => const Color(0xffE0F2F7),
+    PartnerOrderStatus.delivered => const Color(0xffE6F4EC),
     PartnerOrderStatus.rejected => const Color(0xffFCE8E8),
   };
 
-  /// الطلبات اللي لسه شغالة، بتظهر في تاب "الحالية"
-  bool get isActive =>
-      this == PartnerOrderStatus.newOrder ||
-      this == PartnerOrderStatus.inProgress ||
-      this == PartnerOrderStatus.ready;
+  /// آخر مرحلة وصلها الطلب في التايم لاين
+  /// المرفوض ملوش مرحلة، فبيفضل على أول واحدة
+  PartnerOrderStage get stage => switch (this) {
+    PartnerOrderStatus.newOrder ||
+    PartnerOrderStatus.rejected => PartnerOrderStage.placed,
+    PartnerOrderStatus.awaitingPickup => PartnerOrderStage.accepted,
+    PartnerOrderStatus.atLaundryPendingMatch ||
+    PartnerOrderStatus.adjustmentPendingApproval => PartnerOrderStage.pickedUp,
+    PartnerOrderStatus.inProgress => PartnerOrderStage.cleaning,
+    PartnerOrderStatus.ready => PartnerOrderStage.ready,
+    PartnerOrderStatus.outForDelivery => PartnerOrderStage.outForDelivery,
+    PartnerOrderStatus.delivered => PartnerOrderStage.delivered,
+  };
+}
+
+/// حالة الدفع، ماشية لوحدها جنب حالة الطلب ومش بتوقف شغل المغسلة
+enum PaymentStatus {
+  /// الدفع لسه ماتطلبش، بيتطلب بعد المطابقة
+  none(labelKey: ''),
+  pending(labelKey: 'payment_status_pending'),
+  successful(labelKey: 'payment_status_successful'),
+  failed(labelKey: 'payment_status_failed');
+
+  final String labelKey;
+
+  const PaymentStatus({required this.labelKey});
+
+  static PaymentStatus fromApi(Object? value) =>
+      switch ('${value ?? ''}'.toLowerCase()) {
+        'successful' || 'paid' => PaymentStatus.successful,
+        'failed' => PaymentStatus.failed,
+        'pending' => PaymentStatus.pending,
+        _ => PaymentStatus.none,
+      };
 }
 
 /// قطعة واحدة جوه الطلب
 /// في كارت الطلبات بتظهر كشيب صغير، وفي التفاصيل بصورتها ونوع الخدمة
 class PartnerOrderItem {
+  /// الـ id بتاع القطعة جوه الطلب، هو اللي بيتبعت كـ orderItemId في التعديل
+  final int id;
+
   /// اسم القطعة زي "قميص"
   final String name;
 
   final int quantity;
+
+  /// سعر القطعة الواحدة
+  final double price;
+
+  /// سعر القطعة × الكمية
+  final double lineTotal;
+
+  /// العميل رفض التعديل على القطعة دي فهترجعله من غير ما تتغسل
+  final bool isReturned;
 
   /// نوع الخدمة المطلوبة للقطعة دي زي "غسيل وكي"
   /// مفتاح ترجمة مش نص جاهز
@@ -83,8 +163,12 @@ class PartnerOrderItem {
   final String imageUrl;
 
   const PartnerOrderItem({
+    this.id = 0,
     required this.name,
     required this.quantity,
+    this.price = 0,
+    this.lineTotal = 0,
+    this.isReturned = false,
     this.serviceKey = 'service_wash_iron',
     this.imageUrl = '',
   });
@@ -92,9 +176,15 @@ class PartnerOrderItem {
   /// { "id", "serviceItemName", "price", "quantity", "lineTotal", "isReturned" }
   /// السيرفر مش بيرجّع نوع الخدمة ولا صورة، فبيفضلوا فاضيين
   factory PartnerOrderItem.fromJson(Map<String, dynamic> json) {
+    final quantity = (json['quantity'] as num? ?? 0).toInt();
+    final price = (json['price'] as num? ?? 0).toDouble();
     return PartnerOrderItem(
+      id: (json['id'] as num? ?? 0).toInt(),
       name: json['serviceItemName'] as String? ?? '',
-      quantity: (json['quantity'] as num? ?? 0).toInt(),
+      quantity: quantity,
+      price: price,
+      lineTotal: (json['lineTotal'] as num? ?? price * quantity).toDouble(),
+      isReturned: json['isReturned'] as bool? ?? false,
       serviceKey: '',
     );
   }
@@ -111,39 +201,12 @@ enum PartnerOrderStage {
   pickedUp(labelKey: 'stage_picked_up'),
   cleaning(labelKey: 'stage_cleaning'),
   ready(labelKey: 'stage_ready'),
+  outForDelivery(labelKey: 'stage_out_for_delivery'),
   delivered(labelKey: 'stage_delivered');
 
   final String labelKey;
 
   const PartnerOrderStage({required this.labelKey});
-
-  /// آخر مرحلة وصلها الطلب حسب رقم الحالة اللي جاي من السيرفر
-  /// شوف [PartnerOrderStatus.fromApi] لمعنى كل رقم
-  static PartnerOrderStage fromApi(Object? value) =>
-      switch (int.tryParse('$value')) {
-        2 => PartnerOrderStage.accepted,
-        3 || 4 => PartnerOrderStage.pickedUp,
-        5 => PartnerOrderStage.cleaning,
-        6 || 7 => PartnerOrderStage.ready,
-        8 => PartnerOrderStage.delivered,
-        _ => PartnerOrderStage.placed,
-      };
-
-  /// المرحلة اللي بعدها، وnull لو دي آخر مرحلة
-  PartnerOrderStage? get next {
-    final all = PartnerOrderStage.values;
-    return this == all.last ? null : all[index + 1];
-  }
-
-  /// الحالة اللي بتتحول ليها الطلب لما يوصل المرحلة دي
-  PartnerOrderStatus get status => switch (this) {
-    PartnerOrderStage.placed => PartnerOrderStatus.newOrder,
-    PartnerOrderStage.accepted ||
-    PartnerOrderStage.pickedUp ||
-    PartnerOrderStage.cleaning => PartnerOrderStatus.inProgress,
-    PartnerOrderStage.ready => PartnerOrderStatus.ready,
-    PartnerOrderStage.delivered => PartnerOrderStatus.completed,
-  };
 }
 
 /// طلب واحد زي ما بيتعرض في كارت الطلبات
@@ -164,22 +227,37 @@ class PartnerOrder {
   /// وقت الطلب، بيتعرض بصيغة "اليوم، 10:45 ص"
   final DateTime createdAt;
 
-  /// إجمالي الطلب بالريال
+  /// إجمالي الطلب = الأصناف + رسوم الاستلام + رسوم التسليم
   final double total;
+
+  /// إجمالي الأصناف بس، وده اللي بينزل في محفظة المغسلة بعد المطابقة
+  final double itemsTotal;
+
+  final double pickupFee;
+  final double dropoffFee;
 
   final PartnerOrderStatus status;
 
+  final PaymentStatus paymentStatus;
+
   /// رقم تليفون العميل اللي بيظهر في كارت بيانات العميل
   final String customerPhone;
+
+  /// اللي هيسلّم الهدوم للدليفري لو مش العميل نفسه
+  final String pickupContactName;
+  final String pickupContactPhone;
+
+  /// رحلة الاستلام، بتتعمل لما المغسلة تقبل الطلب
+  final DeliveryTrip? pickupTrip;
+
+  /// رحلة التسليم، بتتعمل لما المغسلة تعلّم إن الطلب جاهز
+  final DeliveryTrip? dropoffTrip;
 
   /// المسافة بين المغسلة والعميل بالكيلومتر
   final double distanceKm;
 
   /// وقت التسليم المتوقع بالساعات
   final int estimatedHours;
-
-  /// آخر مرحلة وصلها الطلب في التايم لاين
-  final PartnerOrderStage stage;
 
   const PartnerOrder({
     this.id = 0,
@@ -190,47 +268,82 @@ class PartnerOrder {
     required this.createdAt,
     required this.total,
     required this.status,
+    this.itemsTotal = 0,
+    this.pickupFee = 0,
+    this.dropoffFee = 0,
+    this.paymentStatus = PaymentStatus.none,
     this.customerPhone = '',
+    this.pickupContactName = '',
+    this.pickupContactPhone = '',
+    this.pickupTrip,
+    this.dropoffTrip,
     this.distanceKm = 0,
     this.estimatedHours = 0,
-    this.stage = PartnerOrderStage.placed,
   });
 
   /// طلب واحد من ريسبونس GET api/laundry/orders
   factory PartnerOrder.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as int? ?? 0;
+    final items = (json['items'] as List? ?? [])
+        .map((item) => PartnerOrderItem.fromJson(item as Map<String, dynamic>))
+        .toList();
     return PartnerOrder(
       id: id,
       number: '$id',
       customerName: json['customerName'] as String? ?? '',
       customerPhone: json['customerPhoneNumber'] as String? ?? '',
-      items: (json['items'] as List? ?? [])
-          .map(
-            (item) => PartnerOrderItem.fromJson(item as Map<String, dynamic>),
-          )
-          .toList(),
+      pickupContactName: json['pickupContactName'] as String? ?? '',
+      pickupContactPhone: json['pickupContactPhoneNumber'] as String? ?? '',
+      items: items,
       address: json['deliveryAddress'] as String? ?? '',
       createdAt:
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
       total: (json['totalPrice'] as num? ?? 0).toDouble(),
+      itemsTotal:
+          (json['itemsTotal'] as num? ??
+                  items.fold<double>(0, (sum, item) => sum + item.lineTotal))
+              .toDouble(),
+      pickupFee: (json['pickupFee'] as num? ?? 0).toDouble(),
+      dropoffFee: (json['dropoffFee'] as num? ?? 0).toDouble(),
       status: PartnerOrderStatus.fromApi(json['status']),
-      stage: PartnerOrderStage.fromApi(json['status']),
+      paymentStatus: PaymentStatus.fromApi(json['paymentStatus']),
+      pickupTrip: _readTrip(json, DeliveryTripType.pickup),
+      dropoffTrip: _readTrip(json, DeliveryTripType.dropoff),
     );
   }
 
-  /// بينسخ الطلب بمرحلة جديدة والحالة بتتحدث معاها تلقائياً
-  PartnerOrder copyWithStage(PartnerOrderStage newStage) =>
-      _copyWith(status: newStage.status, stage: newStage);
+  /// شكل الرحلات في ريسبونس الطلب مش متوثق في الـ Swagger، فبنقرا الأشكال المتوقعة:
+  /// لستة "deliveryTrips" كل رحلة فيها "type"، أو "pickupTrip" / "dropoffTrip"،
+  /// أو "pickupTripId" / "dropoffTripId" بس
+  static DeliveryTrip? _readTrip(
+    Map<String, dynamic> json,
+    DeliveryTripType type,
+  ) {
+    final key = type == DeliveryTripType.pickup ? 'pickup' : 'dropoff';
 
-  /// المرفوض ملوش مرحلة في التايم لاين، فالمرحلة بتفضل زي ما هي
-  PartnerOrder markRejected() =>
-      _copyWith(status: PartnerOrderStatus.rejected, stage: stage);
+    for (final trip in json['deliveryTrips'] as List? ?? const []) {
+      if (trip is Map<String, dynamic> &&
+          DeliveryTripType.fromApi(trip['type']) == type) {
+        return DeliveryTrip.fromJson(trip, type: type);
+      }
+    }
 
-  PartnerOrder _copyWith({
-    required PartnerOrderStatus status,
-    required PartnerOrderStage stage,
-  }) => PartnerOrder(
+    final trip = json['${key}Trip'];
+    if (trip is Map<String, dynamic>) {
+      return DeliveryTrip.fromJson(trip, type: type);
+    }
+
+    final tripId = json['${key}TripId'];
+    if (tripId is int) return DeliveryTrip(id: tripId, type: type);
+    return null;
+  }
+
+  /// آخر مرحلة وصلها الطلب في التايم لاين
+  PartnerOrderStage get stage => status.stage;
+
+  /// بينسخ الطلب بحالة جديدة، والباقي بيفضل زي ما هو
+  PartnerOrder copyWith({required PartnerOrderStatus status}) => PartnerOrder(
     id: id,
     number: number,
     customerName: customerName,
@@ -239,10 +352,17 @@ class PartnerOrder {
     createdAt: createdAt,
     total: total,
     status: status,
+    itemsTotal: itemsTotal,
+    pickupFee: pickupFee,
+    dropoffFee: dropoffFee,
+    paymentStatus: paymentStatus,
     customerPhone: customerPhone,
+    pickupContactName: pickupContactName,
+    pickupContactPhone: pickupContactPhone,
+    pickupTrip: pickupTrip,
+    dropoffTrip: dropoffTrip,
     distanceKm: distanceKm,
     estimatedHours: estimatedHours,
-    stage: stage,
   );
 
   /// إجمالي عدد القطع في الطلب
@@ -257,14 +377,8 @@ class PartnerOrder {
   /// "4 ساعات"
   String get displayEta => 'hours_count'.plural(estimatedHours);
 
-  /// "85 د.ل" — السعر من غير كسور لو رقم صحيح
-  String get displayTotal {
-    final isWhole = total == total.roundToDouble();
-    final amount = isWhole
-        ? total.toInt().toString()
-        : total.toStringAsFixed(2);
-    return '$amount ${'currency'.tr()}';
-  }
+  /// "85 د.ل"
+  String get displayTotal => formatAmount(total);
 
   /// "اليوم، 10:45 ص" أو "أمس، 3:20 م" أو التاريخ لو أقدم من كده
   /// [locale] بييجي من الشاشة عشان الموديل يفضل من غير BuildContext
@@ -286,4 +400,11 @@ class PartnerOrder {
 
     return '$day، $clock';
   }
+}
+
+/// "85 د.ل" — السعر من غير كسور لو رقم صحيح
+String formatAmount(double amount) {
+  final isWhole = amount == amount.roundToDouble();
+  final text = isWhole ? amount.toInt().toString() : amount.toStringAsFixed(2);
+  return '$text ${'currency'.tr()}';
 }

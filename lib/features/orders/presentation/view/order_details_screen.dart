@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,14 +11,39 @@ import 'package:lavanderia_partner/core/router/bottom_nav_controller.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
-import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/order_adjustment_screen.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_actions_panel.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_timeline.dart';
-import 'package:lavanderia_partner/features/orders/presentation/view/widgets/update_status_sheet.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/order_action_cubit.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_tile.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/pickup_otp_sheet.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/trip_requests_card.dart';
+
+/// بيفتح تفاصيل طلب من الـ id بس، زي لما اليوزر يضغط على إشعار
+/// مفيش GET orders/{id} للمغسلة، فبندوّر عليه في الليستة الأول
+Future<void> openOrderDetailsById(BuildContext context, int orderId) async {
+  final navigator = Navigator.of(context);
+  context.showLoadingDialog(message: 'loading');
+
+  final result = await getIt<OrdersDataSource>().findOrder(orderId);
+  // بيقفل اللودينج
+  navigator.pop();
+
+  result.fold((_) {}, (order) {
+    if (order == null) {
+      navigator.context.showErrorMessage('order_not_found'.tr());
+      return;
+    }
+    navigator.push(
+      MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+    );
+  });
+}
 
 /// صفحة تفاصيل الطلب
 /// أي تعديل بيتبعت لـ [OrdersCubit.notifyChanged] عشان كل الليستات تحدّث نفسها
@@ -31,7 +57,10 @@ class OrderDetailsScreen extends StatefulWidget {
 }
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
-  late PartnerOrder _order = widget.order;
+  late final OrderDetailsCubit _detailsCubit = OrderDetailsCubit(
+    getIt<OrdersDataSource>(),
+    widget.order,
+  );
 
   final OrderActionCubit _actionCubit = OrderActionCubit(
     getIt<OrdersDataSource>(),
@@ -39,30 +68,60 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   void dispose() {
+    _detailsCubit.close();
     _actionCubit.close();
     super.dispose();
   }
 
-  Future<void> _updateStatus() async {
-    final newStage = await showUpdateStatusSheet(
-      context: context,
-      currentStage: _order.stage,
-    );
-    if (newStage == null || !mounted) return;
+  PartnerOrder get _order => _detailsCubit.order;
 
-    setState(() => _order = _order.copyWithStage(newStage));
-    OrdersCubit.notifyChanged(_order);
+  Future<void> _confirmPickup() async {
+    final tripId = _order.pickupTrip?.id;
+    if (tripId == null) return;
+
+    final confirmed = await showPickupOtpSheet(
+      context: context,
+      tripId: tripId,
+    );
+    if (confirmed != true || !mounted) return;
+
+    context.showSuccessMessage('pickup_confirmed'.tr());
+    OrdersCubit.notifyChanged(
+      _order.copyWith(status: PartnerOrderStatus.atLaundryPendingMatch),
+    );
+    _detailsCubit.refresh();
   }
 
-  /// المقبول بيروح لطلباتي، والمرفوض الليستات بتشيله لوحدها
+  Future<void> _reportMismatch() async {
+    final sent = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => OrderAdjustmentScreen(order: _order)),
+    );
+    if (sent == true) _detailsCubit.refresh();
+  }
+
+  /// القبول بيروح لطلباتي والرفض الليستات بتشيله لوحدها،
+  /// والباقي بيفضل في الصفحة ويجيب الطلب من جديد
   void _onActionStateChanged(
     BuildContext context,
     BaseState<PartnerOrder> state,
   ) {
     if (state.isSuccess) {
-      final accepted = _actionCubit.pendingAction == OrderAction.accept;
-      Navigator.of(context).pop();
-      if (accepted) BottomNavController.instance.goTo(BottomNavTab.orders);
+      switch (_actionCubit.pendingAction) {
+        case OrderAction.accept || OrderAction.reject:
+          final accepted = _actionCubit.pendingAction == OrderAction.accept;
+          Navigator.of(context).pop();
+          if (accepted) BottomNavController.instance.goTo(BottomNavTab.orders);
+        case OrderAction.confirmMatch:
+          context.showSuccessMessage(
+            'match_confirmed'.tr(args: [formatAmount(_order.itemsTotal)]),
+          );
+          _detailsCubit.refresh();
+        case OrderAction.markReady:
+          context.showSuccessMessage('order_marked_ready'.tr());
+          _detailsCubit.refresh();
+        case null:
+          break;
+      }
       return;
     }
     // أخطاء الاتصال والـ validation الـ ApiConsumer بيعرضها بنفسه
@@ -75,151 +134,92 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // آخر مرحلة يبقى مفيش حاجة نحدّثها بعدها
-    final canUpdate = _order.stage.next != null;
-    final isNew = _order.status == PartnerOrderStatus.newOrder;
-
     return BlocListener<OrderActionCubit, BaseState<PartnerOrder>>(
       bloc: _actionCubit,
       listenWhen: (previous, current) => previous.status != current.status,
       listener: _onActionStateChanged,
-      child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
-        body: Column(
-          children: [
-            _DetailsHeader(order: _order),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
-                child: Column(
-                  children: [
-                    CustomerInfoCard(order: _order),
-                    Gap(14.h),
-                    OrderItemsCard(order: _order),
-                    Gap(14.h),
-                    OrderMetaCard(order: _order),
-                    Gap(14.h),
-                    DetailsCard(
-                      titleKey: 'order_stages',
-                      child: OrderTimeline(currentStage: _order.stage),
-                    ),
-                    Gap(20.h),
-                    // الطلب الجديد لازم يتقبل الأول قبل ما حالته تتحدث
-                    if (isNew)
-                      BlocBuilder<OrderActionCubit, BaseState<PartnerOrder>>(
-                        bloc: _actionCubit,
-                        builder: (context, state) => _AcceptRejectBar(
-                          loadingAction: state.isLoading
-                              ? _actionCubit.pendingAction
-                              : null,
-                          onAccept: () => _actionCubit.accept(_order),
-                          onReject: () => _actionCubit.reject(_order),
-                        ),
-                      )
-                    else if (canUpdate)
-                      CustomButton(
-                        title: 'update_status',
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                        onPressed: _updateStatus,
+      child: BlocBuilder<OrderDetailsCubit, BaseState<PartnerOrder>>(
+        bloc: _detailsCubit,
+        builder: (context, detailsState) {
+          final order = detailsState.data!;
+          final tripCard = _tripCard(order, detailsState.lastUpdated);
+
+          return Scaffold(
+            backgroundColor: AppColors.semiWhiteColor3,
+            body: Column(
+              children: [
+                _DetailsHeader(order: order),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: AppColors.primaryColor,
+                    onRefresh: _detailsCubit.refresh,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
+                      child: Column(
+                        children: [
+                          OrderStatusHint(order: order),
+                          Gap(14.h),
+                          CustomerInfoCard(order: order),
+                          Gap(14.h),
+                          if (tripCard != null) ...[tripCard, Gap(14.h)],
+                          OrderItemsCard(order: order),
+                          Gap(14.h),
+                          OrderMetaCard(order: order),
+                          Gap(14.h),
+                          DetailsCard(
+                            titleKey: 'order_stages',
+                            child: OrderTimeline(currentStage: order.stage),
+                          ),
+                          Gap(20.h),
+                          BlocBuilder<
+                            OrderActionCubit,
+                            BaseState<PartnerOrder>
+                          >(
+                            bloc: _actionCubit,
+                            builder: (context, state) => OrderActionsPanel(
+                              order: order,
+                              loadingAction: state.isLoading
+                                  ? _actionCubit.pendingAction
+                                  : null,
+                              onAccept: () => _actionCubit.accept(order),
+                              onReject: () => _actionCubit.reject(order),
+                              onConfirmPickup: _confirmPickup,
+                              onConfirmMatch: () =>
+                                  _actionCubit.confirmMatch(order),
+                              onReportMismatch: _reportMismatch,
+                              onMarkReady: () => _actionCubit.markReady(order),
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
-}
 
-/// زراير قبول ورفض الطلب الجديد
-/// وهو بيحمّل الزرار اللي اتداس بيبقى لودينج والاتنين بيتقفلوا
-class _AcceptRejectBar extends StatelessWidget {
-  final OrderAction? loadingAction;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
-
-  const _AcceptRejectBar({
-    required this.loadingAction,
-    required this.onAccept,
-    required this.onReject,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isBusy = loadingAction != null;
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionButton(
-            labelKey: 'accept_order',
-            background: AppColors.primaryColor,
-            foreground: AppColors.whiteColor,
-            isLoading: loadingAction == OrderAction.accept,
-            onTap: isBusy ? null : onAccept,
-          ),
-        ),
-        Gap(12.w),
-        Expanded(
-          child: _ActionButton(
-            labelKey: 'reject_order',
-            background: AppColors.redColor2.withValues(alpha: 0.1),
-            foreground: AppColors.redColor2,
-            isLoading: loadingAction == OrderAction.reject,
-            onTap: isBusy ? null : onReject,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String labelKey;
-  final Color background;
-  final Color foreground;
-  final bool isLoading;
-  final VoidCallback? onTap;
-
-  const _ActionButton({
-    required this.labelKey,
-    required this.background,
-    required this.foreground,
-    required this.isLoading,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        height: 52.h,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        child: isLoading
-            ? SizedBox(
-                width: 22.w,
-                height: 22.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: foreground,
-                ),
-              )
-            : LocalizedLabel(
-                text: labelKey,
-                style: TextStyles.boldStyle(
-                  16,
-                  color: foreground,
-                  weight: FontWeight.w700,
-                ),
-              ),
-      ),
+  /// كارت رحلة الاستلام أو التسليم حسب الحالة:
+  /// الدليفري المتعيّن لو فيه، وإلا الدليفرية اللي طلبوا الرحلة
+  /// [refreshedAt] جوه الـ key عشان الكارت يجيب الطلبات تاني مع كل تحديث
+  Widget? _tripCard(PartnerOrder order, DateTime? refreshedAt) {
+    final trip = switch (order.status) {
+      PartnerOrderStatus.awaitingPickup => order.pickupTrip,
+      PartnerOrderStatus.ready ||
+      PartnerOrderStatus.outForDelivery => order.dropoffTrip,
+      _ => null,
+    };
+    if (trip == null) return null;
+    if (trip.hasDriver) return AssignedDriverCard(trip: trip);
+    return TripRequestsCard(
+      key: ValueKey('${trip.id}-$refreshedAt'),
+      trip: trip,
+      onApproved: _detailsCubit.refresh,
     );
   }
 }

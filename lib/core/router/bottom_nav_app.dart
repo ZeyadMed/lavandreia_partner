@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:lavanderia_partner/core/common_widget/custom_error_message.dart';
+import 'package:lavanderia_partner/core/notification/push_notifications.dart';
 import 'package:lavanderia_partner/core/router/bottom_nav_controller.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
@@ -46,6 +47,10 @@ class _BottomNavAppState extends State<BottomNavApp> {
     _getPage(0);
     // عشان شاشة زي الرئيسية تقدر تنقل لتاب الطلبات من "عرض الكل"
     BottomNavController.instance.addListener(_onExternalTabRequest);
+    // لو الأبلكيشن اتفتح من إشعار طلب، بنفتح الطلب بعد ما الرئيسية تظهر
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => PushNotifications.openPendingOrder(),
+    );
   }
 
   @override

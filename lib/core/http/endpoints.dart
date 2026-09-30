@@ -59,6 +59,34 @@ abstract interface class Endpoints {
   /// رفض الطلب الجديد، POST من غير body
   static String rejectOrder(int orderId) => '$orders/$orderId/reject';
 
+  /// الهدوم اللي وصلت مطابقة للطلب، POST من غير body
+  static String confirmOrderMatch(int orderId) =>
+      '$orders/$orderId/confirm-match';
+
+  /// تعديل أصناف الطلب لما اللي وصل يختلف عن اللي اتطلب، POST بـ
+  /// { items: [{ orderItemId, action: Replace | Add | Remove,
+  /// newServiceItemId, newQuantity }] }
+  static String orderAdjustments(int orderId) => '$orders/$orderId/adjustments';
+
+  /// الغسيل خلص والطلب جاهز للتسليم، POST من غير body
+  static String markOrderReady(int orderId) => '$orders/$orderId/ready';
+
+  /// الدليفرية اللي طلبوا رحلة، GET
+  static String tripRequests(int tripId) =>
+      'api/laundry/trips/$tripId/requests';
+
+  /// الموافقة على دليفري للرحلة وباقي الطلبات بتترفض لوحدها، POST من غير body
+  static String approveTripRequest(int tripId, int requestId) =>
+      '${tripRequests(tripId)}/$requestId/approve';
+
+  /// رفض طلب دليفري واحد، POST من غير body
+  static String rejectTripRequest(int tripId, int requestId) =>
+      '${tripRequests(tripId)}/$requestId/reject';
+
+  /// تأكيد استلام الهدوم من دليفري الاستلام، POST بـ { otpCode }
+  static String confirmPickupTrip(int tripId) =>
+      'api/laundry/pickup-trips/$tripId/confirm';
+
   /// رصيد محفظة المغسلة
   static const String wallet = 'api/laundry/wallet';
 

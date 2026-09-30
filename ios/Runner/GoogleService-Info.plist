@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.lavanderiaPartner</string>
+	<string>com.theone.lavanderiaPartner</string>
 	<key>PROJECT_ID</key>
 	<string>lavandria-b3e46</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:550015810677:ios:eb31afb83d0a60c18b0c3c</string>
+	<string>1:550015810677:ios:a5af2f4b8c49f5e78b0c3c</string>
 </dict>
 </plist>

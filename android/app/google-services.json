@@ -7,9 +7,66 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:550015810677:android:13d878f1edc77c388b0c3c",
+        "android_client_info": {
+          "package_name": "com.example.lavanderia_delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRHcY3pZFlg2P-OjIY_Qs1rCM-6FQ93UQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:550015810677:android:6a85b59f073a0a328b0c3c",
         "android_client_info": {
           "package_name": "com.example.lavanderia_partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRHcY3pZFlg2P-OjIY_Qs1rCM-6FQ93UQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550015810677:android:55e72b3a73556fcf8b0c3c",
+        "android_client_info": {
+          "package_name": "com.example.maghsalati"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRHcY3pZFlg2P-OjIY_Qs1rCM-6FQ93UQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550015810677:android:d8ce3080c1abe30e8b0c3c",
+        "android_client_info": {
+          "package_name": "com.theone.lavanderia_partner"
         }
       },
       "oauth_client": [],

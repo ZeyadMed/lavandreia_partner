@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -127,6 +128,34 @@ class CustomerInfoCard extends StatelessWidget {
               ],
             ),
           ),
+          // اللي هيسلّم الهدوم للدليفري لو مش العميل نفسه
+          if (order.pickupContactName.isNotEmpty &&
+              order.pickupContactName != order.customerName) ...[
+            Gap(12.h),
+            Row(
+              children: [
+                LocalizedLabel(
+                  text: 'pickup_contact',
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor4,
+                  ),
+                ),
+                Gap(8.w),
+                Expanded(
+                  child: Label(
+                    text: [
+                      order.pickupContactName,
+                      order.pickupContactPhone,
+                    ].where((text) => text.isNotEmpty).join(' • '),
+                    maxLines: 1,
+                    style: TextStyles.darkBold14.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -149,6 +178,13 @@ class OrderItemsCard extends StatelessWidget {
           Gap(6.h),
           Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
           Gap(12.h),
+          // الرسوم مش بتيجي في كل الطلبات، فبنعرض التفاصيل بس لو موجودة
+          if (order.pickupFee > 0 || order.dropoffFee > 0) ...[
+            _PriceRow(labelKey: 'items_total', amount: order.itemsTotal),
+            _PriceRow(labelKey: 'pickup_fee', amount: order.pickupFee),
+            _PriceRow(labelKey: 'dropoff_fee', amount: order.dropoffFee),
+            Gap(4.h),
+          ],
           Row(
             children: [
               LocalizedLabel(
@@ -209,13 +245,89 @@ class _ItemRow extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          Label(
-            text: '× ${item.quantity}',
-            maxLines: 1,
-            style: TextStyles.darkBold14.copyWith(
-              color: AppColors.greyColor2,
-              fontWeight: FontWeight.w600,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Label(
+                text: '× ${item.quantity}',
+                maxLines: 1,
+                style: TextStyles.darkBold14.copyWith(
+                  color: AppColors.greyColor2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (item.lineTotal > 0) ...[
+                Gap(2.h),
+                // القطعة اللي هترجع سعرها اتشال من الإجمالي
+                Label(
+                  text: formatAmount(item.lineTotal),
+                  maxLines: 1,
+                  style: TextStyles.darkRegular12.copyWith(
+                    color: AppColors.greyColor4,
+                    decoration: item.isReturned
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+              ],
+              if (item.isReturned) ...[Gap(4.h), const _ReturnedChip()],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// شيب "هترجع للعميل" على القطعة اللي العميل رفض تعديلها
+class _ReturnedChip extends StatelessWidget {
+  const _ReturnedChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: const Color(0xffFCE8E8),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: LocalizedLabel(
+        text: 'item_returned',
+        maxLines: 1,
+        style: TextStyles.boldStyle(
+          11,
+          color: AppColors.redColor2,
+          weight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// سطر "اسم الرسوم ... المبلغ" فوق الإجمالي
+class _PriceRow extends StatelessWidget {
+  final String labelKey;
+  final double amount;
+
+  const _PriceRow({required this.labelKey, required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        children: [
+          LocalizedLabel(
+            text: labelKey,
+            style: TextStyles.darkRegular14.copyWith(
+              color: AppColors.greyColor4,
             ),
+          ),
+          const Spacer(),
+          Label(
+            text: formatAmount(amount),
+            maxLines: 1,
+            style: TextStyles.darkBold14.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -278,6 +390,8 @@ class OrderMetaCard extends StatelessWidget {
     // المسافة ووقت التسليم مش جايين من السيرفر لسه، فبنخفيهم لو صفر
     final hasDistance = order.distanceKm > 0;
     final hasEta = order.estimatedHours > 0;
+    // الدفع بيتطلب بعد المطابقة بس، وقبلها ملوش حالة
+    final hasPayment = order.paymentStatus != PaymentStatus.none;
 
     return DetailsCard(
       titleKey: 'order_info',
@@ -289,18 +403,24 @@ class OrderMetaCard extends StatelessWidget {
             value: order.displayDate(
               Localizations.localeOf(context).languageCode,
             ),
-            showDivider: hasDistance || hasEta,
+            showDivider: hasDistance || hasEta || hasPayment,
           ),
           if (hasDistance)
             _MetaRow(
               labelKey: 'distance',
               value: order.displayDistance,
-              showDivider: hasEta,
+              showDivider: hasEta || hasPayment,
             ),
           if (hasEta)
             _MetaRow(
               labelKey: 'estimated_delivery',
               value: order.displayEta,
+              showDivider: hasPayment,
+            ),
+          if (hasPayment)
+            _MetaRow(
+              labelKey: 'payment_status',
+              value: order.paymentStatus.labelKey.tr(),
               showDivider: false,
             ),
         ],

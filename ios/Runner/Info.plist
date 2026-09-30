@@ -30,6 +30,10 @@
 	<string>نحتاج الوصول للكاميرا لالتقاط صورة لمغسلتك</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>نحتاج الوصول لصورك لاختيار صورة لمغسلتك</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

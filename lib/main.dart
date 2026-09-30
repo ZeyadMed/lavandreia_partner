@@ -1,19 +1,26 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
+import 'package:lavanderia_partner/core/helpers/logger.dart';
 import 'package:lavanderia_partner/core/internet_connenction/internet_connection_state.dart';
 import 'package:lavanderia_partner/core/internet_connenction/internet_connenction_cubit.dart';
+import 'package:lavanderia_partner/core/notification/push_notifications.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/style/assets.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/theme/theme.dart';
+import 'package:lavanderia_partner/firebase_options.dart';
 import 'package:lottie/lottie.dart';
+
 import 'dart:ui' as ui;
 
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -22,22 +29,28 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'navigatorKey-${DateTime.now().millisecondsSinceEpoch}',
 );
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // تهيئة ScreenUtil
   await ScreenUtil.ensureScreenSize();
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  // await FirebaseMessaging.instance.requestPermission();
-  // MessagingConfig.initFirebaseMessaging();
-  // FirebaseMessaging.onBackgroundMessage(MessagingConfig.messageHandler);
-
   await CacheManager.init();
-  await CacheManager.fetchAndSaveFcmToken();
+
+  // من غير Firebase الـ deviceToken بيتبعت فاضي في اللوجين
+  // والمغسلة مش بيوصلها إشعار بالطلبات الجديدة ولا طلبات الدليفرية
+  // أي مشكلة فيه مش بتوقف الأبلكيشن، الإشعارات بس هي اللي مش هتشتغل
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // من غير await: الإذن واستنى الـ APNs مايوقفوش فتح الأبلكيشن
+    // في iOS، واللوجين بيحاول يجيب الـ token تاني لو لسه ماتحفظش
+    unawaited(PushNotifications.init());
+  } catch (e, stackTrace) {
+    loggerError(stackTrace);
+    loggerWarn('Firebase init failed: $e');
+  }
   EasyLocalization.ensureInitialized();
   await DI.getItInit();
 
@@ -134,4 +147,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
