@@ -53,6 +53,9 @@ abstract interface class Endpoints {
   /// طلبات المغسلة، بتقبل ?PageIndex و ?PageSize
   static const String orders = 'api/laundry/orders';
 
+  /// طلب واحد بكل تفاصيله ورحلاته، GET
+  static String order(int orderId) => '$orders/$orderId';
+
   /// قبول الطلب الجديد، POST من غير body
   static String acceptOrder(int orderId) => '$orders/$orderId/accept';
 
@@ -82,6 +85,19 @@ abstract interface class Endpoints {
   /// رفض طلب دليفري واحد، POST من غير body
   static String rejectTripRequest(int tripId, int requestId) =>
       '${tripRequests(tripId)}/$requestId/reject';
+
+  /// تأكيد تسليم الهدوم لدليفري التسليم، POST بـ { otpCode }
+  static String confirmDropoffHandover(int tripId) =>
+      'api/laundry/dropoff-trips/$tripId/confirm-handover';
+
+  /// بعد فشل الاستلام: POST بـ { retry: true } لرحلة جديدة
+  /// أو { retry: false } لإلغاء الطلب
+  static String resolveFailedPickup(int orderId) =>
+      '$orders/$orderId/failed-pickup/resolve';
+
+  /// بعد فشل التوصيل: المغسلة استلمت الهدوم راجعة، POST من غير body
+  static String confirmFailedDropoffReturn(int orderId) =>
+      '$orders/$orderId/failed-dropoff/confirm-return';
 
   /// تأكيد استلام الهدوم من دليفري الاستلام، POST بـ { otpCode }
   static String confirmPickupTrip(int tripId) =>

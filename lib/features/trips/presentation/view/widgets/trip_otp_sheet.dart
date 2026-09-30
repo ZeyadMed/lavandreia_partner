@@ -8,39 +8,43 @@ import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 
-/// بوتوم شيت إدخال الكود اللي دليفري الاستلام بيوريه للمغسلة
+/// بوتوم شيت إدخال الكود اللي الدليفري بيوريه للمغسلة،
+/// في الاستلام وهو جايب الهدوم وفي التسليم وهو واخدها
 /// بيرجّع true لو الكود اتأكد، أو null لو اتقفل من غير تأكيد
-Future<bool?> showPickupOtpSheet({
+Future<bool?> showTripOtpSheet({
   required BuildContext context,
-  required int tripId,
+  required DeliveryTrip trip,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => _PickupOtpSheet(tripId: tripId),
+    builder: (_) => _TripOtpSheet(trip: trip),
   );
 }
 
-class _PickupOtpSheet extends StatefulWidget {
-  final int tripId;
+class _TripOtpSheet extends StatefulWidget {
+  final DeliveryTrip trip;
 
-  const _PickupOtpSheet({required this.tripId});
+  const _TripOtpSheet({required this.trip});
 
   @override
-  State<_PickupOtpSheet> createState() => _PickupOtpSheetState();
+  State<_TripOtpSheet> createState() => _TripOtpSheetState();
 }
 
-class _PickupOtpSheetState extends State<_PickupOtpSheet> {
+class _TripOtpSheetState extends State<_TripOtpSheet> {
   final TextEditingController _controller = TextEditingController();
 
-  late final ConfirmPickupCubit _cubit = ConfirmPickupCubit(
+  late final ConfirmTripOtpCubit _cubit = ConfirmTripOtpCubit(
     getIt<TripsDataSource>(),
-    widget.tripId,
+    widget.trip,
   );
+
+  bool get _isPickup => widget.trip.type == DeliveryTripType.pickup;
 
   @override
   void dispose() {
@@ -57,7 +61,7 @@ class _PickupOtpSheetState extends State<_PickupOtpSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<ConfirmPickupCubit, BaseState<void>>(
+    return BlocConsumer<ConfirmTripOtpCubit, BaseState<void>>(
       bloc: _cubit,
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
@@ -96,13 +100,17 @@ class _PickupOtpSheetState extends State<_PickupOtpSheet> {
               ),
               Gap(18.h),
               LocalizedLabel(
-                text: 'confirm_pickup_title',
+                text: _isPickup
+                    ? 'confirm_pickup_title'
+                    : 'confirm_handover_title',
                 textAlign: TextAlign.center,
                 style: TextStyles.boldStyle(18, weight: FontWeight.w800),
               ),
               Gap(6.h),
               LocalizedLabel(
-                text: 'confirm_pickup_hint',
+                text: _isPickup
+                    ? 'confirm_pickup_hint'
+                    : 'confirm_handover_hint',
                 textAlign: TextAlign.center,
                 style: TextStyles.darkRegular14.copyWith(
                   color: AppColors.greyColor3,

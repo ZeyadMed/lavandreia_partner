@@ -39,4 +39,13 @@ class TripsDataSource {
       data: {'otpCode': otpCode},
     );
   }
+
+  /// الكود اللي دليفري التسليم بيوريه للمغسلة وهو بياخد الهدوم
+  /// الحالة بتبقى OutForDelivery
+  Future<Either<Failure, void>> confirmHandover(int tripId, String otpCode) {
+    return _genericDataSource.postData<Null>(
+      endpoint: Endpoints.confirmDropoffHandover(tripId),
+      data: {'otpCode': otpCode},
+    );
+  }
 }

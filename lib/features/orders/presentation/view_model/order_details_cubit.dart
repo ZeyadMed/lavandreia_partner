@@ -31,10 +31,9 @@ class OrderDetailsCubit extends Cubit<BaseState<PartnerOrder>> {
   /// [BaseState.lastUpdated] بيتغير مع كل تحديث من السيرفر،
   /// وكروت طلبات الدليفري بتستخدمه عشان تجيب ليستتها تاني
   Future<void> refresh() async {
-    final result = await _dataSource.findOrder(order.id);
+    final result = await _dataSource.getOrder(order.id);
     if (isClosed) return;
     result.fold((_) {}, (found) {
-      if (found == null) return;
       emit(state.copyWith(data: found, lastUpdated: DateTime.now()));
       OrdersCubit.notifyChanged(found);
     });

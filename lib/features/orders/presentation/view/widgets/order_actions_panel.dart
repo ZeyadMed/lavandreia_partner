@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -21,6 +22,10 @@ class OrderActionsPanel extends StatelessWidget {
   final VoidCallback onConfirmMatch;
   final VoidCallback onReportMismatch;
   final VoidCallback onMarkReady;
+  final VoidCallback onConfirmHandover;
+  final VoidCallback onRetryPickup;
+  final VoidCallback onCancelAfterFailedPickup;
+  final VoidCallback onConfirmReturn;
 
   const OrderActionsPanel({
     super.key,
@@ -32,6 +37,10 @@ class OrderActionsPanel extends StatelessWidget {
     required this.onConfirmMatch,
     required this.onReportMismatch,
     required this.onMarkReady,
+    required this.onConfirmHandover,
+    required this.onRetryPickup,
+    required this.onCancelAfterFailedPickup,
+    required this.onConfirmReturn,
   });
 
   @override
@@ -90,6 +99,36 @@ class OrderActionsPanel extends StatelessWidget {
         isLoading: loadingAction == OrderAction.markReady,
         onTap: isBusy ? null : onMarkReady,
       ),
+      // الكود بيتأكد لما دليفري التسليم ييجي ياخد الهدوم
+      PartnerOrderStatus.awaitingDropoffCollection
+          when order.dropoffTrip != null =>
+        OrderActionButton(
+          labelKey: 'confirm_handover',
+          onTap: onConfirmHandover,
+        ),
+      PartnerOrderStatus.pickupFailed => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OrderActionButton(
+            labelKey: 'retry_pickup',
+            isLoading: loadingAction == OrderAction.retryPickup,
+            onTap: isBusy ? null : onRetryPickup,
+          ),
+          Gap(10.h),
+          OrderActionButton(
+            labelKey: 'cancel_order',
+            isPrimary: false,
+            foreground: AppColors.redColor2,
+            isLoading: loadingAction == OrderAction.cancelAfterFailedPickup,
+            onTap: isBusy ? null : onCancelAfterFailedPickup,
+          ),
+        ],
+      ),
+      PartnerOrderStatus.deliveryFailed => OrderActionButton(
+        labelKey: 'confirm_return_received',
+        isLoading: loadingAction == OrderAction.confirmReturn,
+        onTap: isBusy ? null : onConfirmReturn,
+      ),
       _ => const SizedBox.shrink(),
     };
   }
@@ -112,8 +151,26 @@ class OrderStatusHint extends StatelessWidget {
     PartnerOrderStatus.inProgress => 'hint_mark_ready',
     PartnerOrderStatus.ready => 'hint_waiting_dropoff_driver',
     PartnerOrderStatus.outForDelivery => 'hint_out_for_delivery',
+    PartnerOrderStatus.awaitingDropoffCollection =>
+      'hint_awaiting_dropoff_collection',
+    PartnerOrderStatus.pickupFailed => 'hint_pickup_failed',
+    PartnerOrderStatus.deliveryFailed => 'hint_delivery_failed',
     _ => null,
   };
+
+  /// سبب الفشل اللي الدليفري كتبه، بيظهر تحت البانر
+  String get _failureText {
+    final trip = switch (order.status) {
+      PartnerOrderStatus.pickupFailed => order.pickupTrip,
+      PartnerOrderStatus.deliveryFailed => order.dropoffTrip,
+      _ => null,
+    };
+    if (trip == null) return '';
+    final reason = trip.failureReason.isEmpty
+        ? ''
+        : 'failure_reason_${trip.failureReason}'.tr();
+    return [reason, trip.failureNote].where((t) => t.isNotEmpty).join(' - ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,13 +190,25 @@ class OrderStatusHint extends StatelessWidget {
           Icon(Icons.info_outline_rounded, size: 18.sp, color: color),
           Gap(10.w),
           Expanded(
-            child: LocalizedLabel(
-              text: hintKey,
-              style: TextStyles.boldStyle(
-                13,
-                color: color,
-                weight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LocalizedLabel(
+                  text: hintKey,
+                  style: TextStyles.boldStyle(
+                    13,
+                    color: color,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+                if (_failureText.isNotEmpty) ...[
+                  Gap(4.h),
+                  Label(
+                    text: _failureText,
+                    style: TextStyles.darkRegular12.copyWith(color: color),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

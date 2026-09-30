@@ -34,8 +34,15 @@ class DeliveryTrip {
   final String driverName;
   final String driverPhone;
 
-  /// زي ما السيرفر بيبعتها، بتتعرض بس ومش بنبني عليها منطق
-  final String status;
+  /// صور الهدوم اللي الدليفري رفعها وهو بيستلم من العميل
+  final List<String> photoUrls;
+
+  /// سبب الفشل لو الدليفري معرفش يستلم أو يسلّم، زي CustomerNotAvailable
+  final String failureReason;
+  final String failureNote;
+
+  /// عدد الدليفرية اللي طلبوا الرحلة ولسه المغسلة مردتش عليهم
+  final int pendingRequestsCount;
 
   const DeliveryTrip({
     required this.id,
@@ -43,30 +50,33 @@ class DeliveryTrip {
     this.driverId,
     this.driverName = '',
     this.driverPhone = '',
-    this.status = '',
+    this.photoUrls = const [],
+    this.failureReason = '',
+    this.failureNote = '',
+    this.pendingRequestsCount = 0,
   });
 
   /// الدليفري بيتعيّن على الرحلة بس لما المغسلة توافق على طلبه
   bool get hasDriver => driverId != null || driverName.isNotEmpty;
 
-  /// { "id", "type", "status", "driverId", "driverName", "driverPhoneNumber" }
-  /// بيانات الدليفري ممكن تيجي جوه "driver" بدل ما تبقى في الرحلة نفسها
+  /// { "id", "type", "driverId", "driverName", "driverPhoneNumber",
+  /// "photoUrls", "failureReason", "failureNote", "pendingRequestsCount", .. }
   factory DeliveryTrip.fromJson(
     Map<String, dynamic> json, {
     required DeliveryTripType type,
   }) {
-    final driver = json['driver'] as Map<String, dynamic>? ?? const {};
     return DeliveryTrip(
       id: (json['id'] as num? ?? 0).toInt(),
       type: DeliveryTripType.fromApi(json['type']) ?? type,
-      driverId: (json['driverId'] ?? driver['id']) as int?,
-      driverName:
-          (json['driverName'] ?? driver['fullName'] ?? driver['name'])
-              as String? ??
-          '',
-      driverPhone:
-          (json['driverPhoneNumber'] ?? driver['phoneNumber']) as String? ?? '',
-      status: '${json['status'] ?? ''}',
+      driverId: json['driverId'] as int?,
+      driverName: json['driverName'] as String? ?? '',
+      driverPhone: json['driverPhoneNumber'] as String? ?? '',
+      photoUrls: [
+        for (final url in json['photoUrls'] as List? ?? const []) '$url',
+      ],
+      failureReason: json['failureReason'] as String? ?? '',
+      failureNote: json['failureNote'] as String? ?? '',
+      pendingRequestsCount: (json['pendingRequestsCount'] as num? ?? 0).toInt(),
     );
   }
 }

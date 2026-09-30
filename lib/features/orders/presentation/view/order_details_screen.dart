@@ -21,28 +21,27 @@ import 'package:lavanderia_partner/features/orders/presentation/view_model/order
 import 'package:lavanderia_partner/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_tile.dart';
-import 'package:lavanderia_partner/features/trips/presentation/view/widgets/pickup_otp_sheet.dart';
+import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/trip_otp_sheet.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/trip_requests_card.dart';
 
 /// بيفتح تفاصيل طلب من الـ id بس، زي لما اليوزر يضغط على إشعار
-/// مفيش GET orders/{id} للمغسلة، فبندوّر عليه في الليستة الأول
 Future<void> openOrderDetailsById(BuildContext context, int orderId) async {
   final navigator = Navigator.of(context);
   context.showLoadingDialog(message: 'loading');
 
-  final result = await getIt<OrdersDataSource>().findOrder(orderId);
+  final result = await getIt<OrdersDataSource>().getOrder(orderId);
   // بيقفل اللودينج
   navigator.pop();
 
-  result.fold((_) {}, (order) {
-    if (order == null) {
-      navigator.context.showErrorMessage('order_not_found'.tr());
-      return;
-    }
-    navigator.push(
-      MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
-    );
-  });
+  result.fold(
+    (_) => navigator.context.showErrorMessage('order_not_found'.tr()),
+    (order) {
+      navigator.push(
+        MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+      );
+    },
+  );
 }
 
 /// صفحة تفاصيل الطلب
@@ -75,20 +74,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   PartnerOrder get _order => _detailsCubit.order;
 
-  Future<void> _confirmPickup() async {
-    final tripId = _order.pickupTrip?.id;
-    if (tripId == null) return;
+  /// الكود اللي الدليفري بيوريه للمغسلة، في الاستلام أو التسليم
+  /// [nextStatus] الحالة المتوقعة لحد ما السيرفر يرد بالحقيقية
+  Future<void> _confirmTripOtp(
+    DeliveryTrip? trip, {
+    required String successKey,
+    required PartnerOrderStatus nextStatus,
+  }) async {
+    if (trip == null) return;
 
-    final confirmed = await showPickupOtpSheet(
-      context: context,
-      tripId: tripId,
-    );
+    final confirmed = await showTripOtpSheet(context: context, trip: trip);
     if (confirmed != true || !mounted) return;
 
-    context.showSuccessMessage('pickup_confirmed'.tr());
-    OrdersCubit.notifyChanged(
-      _order.copyWith(status: PartnerOrderStatus.atLaundryPendingMatch),
-    );
+    context.showSuccessMessage(successKey.tr());
+    OrdersCubit.notifyChanged(_order.copyWith(status: nextStatus));
     _detailsCubit.refresh();
   }
 
@@ -118,6 +117,15 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           _detailsCubit.refresh();
         case OrderAction.markReady:
           context.showSuccessMessage('order_marked_ready'.tr());
+          _detailsCubit.refresh();
+        case OrderAction.retryPickup:
+          context.showSuccessMessage('pickup_retry_requested'.tr());
+          _detailsCubit.refresh();
+        case OrderAction.cancelAfterFailedPickup:
+          context.showSuccessMessage('order_cancelled'.tr());
+          _detailsCubit.refresh();
+        case OrderAction.confirmReturn:
+          context.showSuccessMessage('return_confirmed'.tr());
           _detailsCubit.refresh();
         case null:
           break;
@@ -184,7 +192,23 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                   : null,
                               onAccept: () => _actionCubit.accept(order),
                               onReject: () => _actionCubit.reject(order),
-                              onConfirmPickup: _confirmPickup,
+                              onConfirmPickup: () => _confirmTripOtp(
+                                order.pickupTrip,
+                                successKey: 'pickup_confirmed',
+                                nextStatus:
+                                    PartnerOrderStatus.atLaundryPendingMatch,
+                              ),
+                              onConfirmHandover: () => _confirmTripOtp(
+                                order.dropoffTrip,
+                                successKey: 'handover_confirmed',
+                                nextStatus: PartnerOrderStatus.outForDelivery,
+                              ),
+                              onRetryPickup: () =>
+                                  _actionCubit.retryPickup(order),
+                              onCancelAfterFailedPickup: () =>
+                                  _actionCubit.cancelAfterFailedPickup(order),
+                              onConfirmReturn: () =>
+                                  _actionCubit.confirmReturn(order),
                               onConfirmMatch: () =>
                                   _actionCubit.confirmMatch(order),
                               onReportMismatch: _reportMismatch,
@@ -206,16 +230,27 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   /// كارت رحلة الاستلام أو التسليم حسب الحالة:
   /// الدليفري المتعيّن لو فيه، وإلا الدليفرية اللي طلبوا الرحلة
+  /// وقت المطابقة كارت الاستلام بيفضل ظاهر عشان صور الهدوم اللي الدليفري رفعها
   /// [refreshedAt] جوه الـ key عشان الكارت يجيب الطلبات تاني مع كل تحديث
   Widget? _tripCard(PartnerOrder order, DateTime? refreshedAt) {
     final trip = switch (order.status) {
-      PartnerOrderStatus.awaitingPickup => order.pickupTrip,
+      PartnerOrderStatus.awaitingPickup ||
+      PartnerOrderStatus.pickupFailed ||
+      PartnerOrderStatus.atLaundryPendingMatch ||
+      PartnerOrderStatus.adjustmentPendingApproval => order.pickupTrip,
       PartnerOrderStatus.ready ||
-      PartnerOrderStatus.outForDelivery => order.dropoffTrip,
+      PartnerOrderStatus.awaitingDropoffCollection ||
+      PartnerOrderStatus.outForDelivery ||
+      PartnerOrderStatus.deliveryFailed => order.dropoffTrip,
       _ => null,
     };
     if (trip == null) return null;
     if (trip.hasDriver) return AssignedDriverCard(trip: trip);
+    // طلبات الدليفرية بتتقبل بس والرحلة لسه مستنية دليفري
+    final isWaitingDriver =
+        order.status == PartnerOrderStatus.awaitingPickup ||
+        order.status == PartnerOrderStatus.ready;
+    if (!isWaitingDriver) return null;
     return TripRequestsCard(
       key: ValueKey('${trip.id}-$refreshedAt'),
       trip: trip,

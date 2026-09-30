@@ -46,7 +46,24 @@ enum PartnerOrderStatus {
   delivered(apiName: 'Delivered', labelKey: 'order_status_completed'),
 
   /// المغسلة رفضت الطلب
-  rejected(apiName: 'Rejected', labelKey: 'order_status_rejected');
+  rejected(apiName: 'Rejected', labelKey: 'order_status_rejected'),
+
+  /// المغسلة وافقت على دليفري التسليم ومستنياه ييجي ياخد الهدوم
+  awaitingDropoffCollection(
+    apiName: 'AwaitingDropoffCollection',
+    labelKey: 'order_status_awaiting_dropoff_collection',
+  ),
+
+  /// دليفري الاستلام معرفش ياخد الهدوم من العميل
+  pickupFailed(apiName: 'PickupFailed', labelKey: 'order_status_pickup_failed'),
+
+  /// دليفري التسليم معرفش يسلّم للعميل ورجّع الهدوم للمغسلة
+  deliveryFailed(
+    apiName: 'DeliveryFailed',
+    labelKey: 'order_status_delivery_failed',
+  ),
+
+  cancelled(apiName: 'Cancelled', labelKey: 'order_status_cancelled');
 
   /// الاسم زي ما الباك إند بيبعته
   final String apiName;
@@ -57,7 +74,7 @@ enum PartnerOrderStatus {
   const PartnerOrderStatus({required this.apiName, required this.labelKey});
 
   /// السيرفر ممكن يرجّع الحالة كرقم زي "1" أو كاسم زي "New"
-  /// الأرقام من 1 لـ 9 بنفس ترتيب الحالات هنا، وأي حاجة تانية بنعتبرها جديد
+  /// الأرقام بتبدأ من 1 بنفس ترتيب الحالات هنا، وأي حاجة تانية بنعتبرها جديد
   static PartnerOrderStatus fromApi(Object? value) {
     final number = int.tryParse('$value');
     if (number != null) {
@@ -83,6 +100,10 @@ enum PartnerOrderStatus {
     PartnerOrderStatus.outForDelivery => const Color(0xff0E7490),
     PartnerOrderStatus.delivered => const Color(0xff2F8F5B),
     PartnerOrderStatus.rejected => AppColors.redColor2,
+    PartnerOrderStatus.awaitingDropoffCollection => const Color(0xff0E7490),
+    PartnerOrderStatus.pickupFailed ||
+    PartnerOrderStatus.deliveryFailed => AppColors.redColor2,
+    PartnerOrderStatus.cancelled => const Color(0xff6B7280),
   };
 
   /// خلفية الشيب، نفس لون النص بس فاتح
@@ -96,14 +117,23 @@ enum PartnerOrderStatus {
     PartnerOrderStatus.outForDelivery => const Color(0xffE0F2F7),
     PartnerOrderStatus.delivered => const Color(0xffE6F4EC),
     PartnerOrderStatus.rejected => const Color(0xffFCE8E8),
+    PartnerOrderStatus.awaitingDropoffCollection => const Color(0xffE0F2F7),
+    PartnerOrderStatus.pickupFailed ||
+    PartnerOrderStatus.deliveryFailed => const Color(0xffFCE8E8),
+    PartnerOrderStatus.cancelled => const Color(0xffEEEFF2),
   };
 
   /// آخر مرحلة وصلها الطلب في التايم لاين
-  /// المرفوض ملوش مرحلة، فبيفضل على أول واحدة
+  /// المرفوض والملغي ملهمش مرحلة، فبيفضلوا على أول واحدة
+  /// والفشل بيفضل على آخر مرحلة وصلها قبله
   PartnerOrderStage get stage => switch (this) {
     PartnerOrderStatus.newOrder ||
-    PartnerOrderStatus.rejected => PartnerOrderStage.placed,
-    PartnerOrderStatus.awaitingPickup => PartnerOrderStage.accepted,
+    PartnerOrderStatus.rejected ||
+    PartnerOrderStatus.cancelled => PartnerOrderStage.placed,
+    PartnerOrderStatus.awaitingPickup ||
+    PartnerOrderStatus.pickupFailed => PartnerOrderStage.accepted,
+    PartnerOrderStatus.awaitingDropoffCollection => PartnerOrderStage.ready,
+    PartnerOrderStatus.deliveryFailed => PartnerOrderStage.outForDelivery,
     PartnerOrderStatus.atLaundryPendingMatch ||
     PartnerOrderStatus.adjustmentPendingApproval => PartnerOrderStage.pickedUp,
     PartnerOrderStatus.inProgress => PartnerOrderStage.cleaning,
@@ -308,36 +338,16 @@ class PartnerOrder {
       dropoffFee: (json['dropoffFee'] as num? ?? 0).toDouble(),
       status: PartnerOrderStatus.fromApi(json['status']),
       paymentStatus: PaymentStatus.fromApi(json['paymentStatus']),
-      pickupTrip: _readTrip(json, DeliveryTripType.pickup),
-      dropoffTrip: _readTrip(json, DeliveryTripType.dropoff),
+      pickupTrip: _readTrip(json['pickupTrip'], DeliveryTripType.pickup),
+      dropoffTrip: _readTrip(json['dropoffTrip'], DeliveryTripType.dropoff),
     );
   }
 
-  /// شكل الرحلات في ريسبونس الطلب مش متوثق في الـ Swagger، فبنقرا الأشكال المتوقعة:
-  /// لستة "deliveryTrips" كل رحلة فيها "type"، أو "pickupTrip" / "dropoffTrip"،
-  /// أو "pickupTripId" / "dropoffTripId" بس
-  static DeliveryTrip? _readTrip(
-    Map<String, dynamic> json,
-    DeliveryTripType type,
-  ) {
-    final key = type == DeliveryTripType.pickup ? 'pickup' : 'dropoff';
-
-    for (final trip in json['deliveryTrips'] as List? ?? const []) {
-      if (trip is Map<String, dynamic> &&
-          DeliveryTripType.fromApi(trip['type']) == type) {
-        return DeliveryTrip.fromJson(trip, type: type);
-      }
-    }
-
-    final trip = json['${key}Trip'];
-    if (trip is Map<String, dynamic>) {
-      return DeliveryTrip.fromJson(trip, type: type);
-    }
-
-    final tripId = json['${key}TripId'];
-    if (tripId is int) return DeliveryTrip(id: tripId, type: type);
-    return null;
-  }
+  /// الرحلة بتبقى null لحد ما تتعمل
+  static DeliveryTrip? _readTrip(Object? json, DeliveryTripType type) =>
+      json is Map<String, dynamic>
+      ? DeliveryTrip.fromJson(json, type: type)
+      : null;
 
   /// آخر مرحلة وصلها الطلب في التايم لاين
   PartnerOrderStage get stage => status.stage;

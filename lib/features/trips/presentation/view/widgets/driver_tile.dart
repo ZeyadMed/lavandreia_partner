@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -20,7 +21,66 @@ class AssignedDriverCard extends StatelessWidget {
       titleKey: trip.type == DeliveryTripType.pickup
           ? 'pickup_driver'
           : 'dropoff_driver',
-      child: DriverTile(name: trip.driverName, phone: trip.driverPhone),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DriverTile(name: trip.driverName, phone: trip.driverPhone),
+          // صور الهدوم وقت الاستلام من العميل، بترجع المغسلة ليها وهي بتطابق
+          if (trip.photoUrls.isNotEmpty) ...[
+            Gap(12.h),
+            LocalizedLabel(
+              text: 'clothes_photos',
+              style: TextStyles.darkRegular12.copyWith(
+                color: AppColors.greyColor4,
+              ),
+            ),
+            Gap(8.h),
+            SizedBox(
+              height: 64.w,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: trip.photoUrls.length,
+                separatorBuilder: (_, _) => Gap(8.w),
+                itemBuilder: (context, index) {
+                  final url = trip.photoUrls[index];
+                  return GestureDetector(
+                    onTap: () => _showPhoto(context, url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10.r),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        width: 64.w,
+                        height: 64.w,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) =>
+                            Container(color: AppColors.semiWhiteColor3),
+                        errorWidget: (_, _, _) => Container(
+                          color: AppColors.semiWhiteColor3,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// الصورة بالحجم الكامل وتتكبر بالصوابع
+  void _showPhoto(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.all(16.w),
+        child: InteractiveViewer(
+          child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+        ),
+      ),
     );
   }
 }

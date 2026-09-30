@@ -50,15 +50,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
         PartnerOrderStatus.atLaundryPendingMatch,
         PartnerOrderStatus.adjustmentPendingApproval,
         PartnerOrderStatus.inProgress,
+        PartnerOrderStatus.pickupFailed,
       },
     ),
     _OrdersFilter(
       labelKey: 'orders_tab_ready',
-      statuses: {PartnerOrderStatus.ready, PartnerOrderStatus.outForDelivery},
+      statuses: {
+        PartnerOrderStatus.ready,
+        PartnerOrderStatus.awaitingDropoffCollection,
+        PartnerOrderStatus.outForDelivery,
+        PartnerOrderStatus.deliveryFailed,
+      },
     ),
     _OrdersFilter(
       labelKey: 'orders_tab_completed',
-      statuses: {PartnerOrderStatus.delivered},
+      statuses: {PartnerOrderStatus.delivered, PartnerOrderStatus.cancelled},
     ),
   ];
 

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
 
@@ -74,19 +75,22 @@ class TripRequestActionCubit extends Cubit<BaseState<TripRequest>> {
   }
 }
 
-/// تأكيد استلام الهدوم من دليفري الاستلام بالكود
-class ConfirmPickupCubit extends Cubit<BaseState<void>> {
+/// تأكيد الكود اللي الدليفري بيوريه للمغسلة:
+/// في الاستلام وهو جايب الهدوم، وفي التسليم وهو واخدها
+class ConfirmTripOtpCubit extends Cubit<BaseState<void>> {
   final TripsDataSource _dataSource;
-  final int tripId;
+  final DeliveryTrip trip;
 
-  ConfirmPickupCubit(this._dataSource, this.tripId)
+  ConfirmTripOtpCubit(this._dataSource, this.trip)
     : super(const BaseState<void>());
 
   Future<void> confirm(String otpCode) async {
     if (state.isLoading) return;
     emit(state.copyWith(status: Status.loading));
 
-    final result = await _dataSource.confirmPickup(tripId, otpCode);
+    final result = trip.type == DeliveryTripType.pickup
+        ? await _dataSource.confirmPickup(trip.id, otpCode)
+        : await _dataSource.confirmHandover(trip.id, otpCode);
     result.fold(
       (failure) => emit(
         state.copyWith(

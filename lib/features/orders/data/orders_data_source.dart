@@ -26,19 +26,13 @@ class OrdersDataSource {
     );
   }
 
-  /// مفيش GET orders/{id} للمغسلة، فبندوّر على الطلب في الليستة صفحة صفحة
-  /// بيرجّع null لو الطلب مش موجود، زي المرفوض اللي السيرفر بيشيله من الليستة
-  Future<Either<Failure, PartnerOrder?>> findOrder(int orderId) async {
-    for (var page = 1; ; page++) {
-      final result = await getOrders(page: page, pageSize: 50);
-      if (result.isError) return Left(result.throwError());
-
-      final response = result.getOrThrow();
-      for (final order in response.items) {
-        if (order.id == orderId) return Right(order);
-      }
-      if (page >= response.pagination.pagesCount) return const Right(null);
-    }
+  /// الريسبونس: { "data": { "id", "status", "items", "pickupTrip",
+  /// "dropoffTrip", "pendingAdjustment", .. } }
+  Future<Either<Failure, PartnerOrder>> getOrder(int orderId) {
+    return _genericDataSource.fetchResult<PartnerOrder>(
+      endpoint: Endpoints.order(orderId),
+      fromJson: PartnerOrder.fromJson,
+    );
   }
 
   Future<Either<Failure, void>> acceptOrder(int orderId) {
@@ -68,6 +62,24 @@ class OrdersDataSource {
     return _genericDataSource.postData<Null>(
       endpoint: Endpoints.orderAdjustments(orderId),
       data: {'items': entries.map((entry) => entry.toJson()).toList()},
+    );
+  }
+
+  /// [retry] بيعمل رحلة استلام جديدة، ومن غيره الطلب بيتلغي
+  Future<Either<Failure, void>> resolveFailedPickup(
+    int orderId, {
+    required bool retry,
+  }) {
+    return _genericDataSource.postData<Null>(
+      endpoint: Endpoints.resolveFailedPickup(orderId),
+      data: {'retry': retry},
+    );
+  }
+
+  /// الهدوم رجعت المغسلة بعد ما دليفري التسليم معرفش يسلّمها للعميل
+  Future<Either<Failure, void>> confirmFailedDropoffReturn(int orderId) {
+    return _genericDataSource.postData<Null>(
+      endpoint: Endpoints.confirmFailedDropoffReturn(orderId),
     );
   }
 
