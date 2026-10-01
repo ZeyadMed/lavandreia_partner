@@ -4,6 +4,7 @@ library;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
+import 'package:lavanderia_partner/features/orders/data/models/order_adjustment_result.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 
 /// حالة الطلب، نفس enum OrderStatus في الباك إند بالترتيب
@@ -244,6 +245,8 @@ class PartnerOrder {
   /// الـ id اللي في السيرفر، 0 للداتا الوهمية
   final int id;
 
+  final int laundryId;
+
   /// رقم الطلب من غير علامة #
   final String number;
 
@@ -283,6 +286,9 @@ class PartnerOrder {
   /// رحلة التسليم، بتتعمل لما المغسلة تعلّم إن الطلب جاهز
   final DeliveryTrip? dropoffTrip;
 
+  /// التعديل اللي المغسلة بعتته ولسه العميل مارادش عليه
+  final OrderAdjustmentResult? pendingAdjustment;
+
   /// المسافة بين المغسلة والعميل بالكيلومتر
   final double distanceKm;
 
@@ -291,6 +297,7 @@ class PartnerOrder {
 
   const PartnerOrder({
     this.id = 0,
+    this.laundryId = 0,
     required this.number,
     required this.customerName,
     required this.items,
@@ -307,6 +314,7 @@ class PartnerOrder {
     this.pickupContactPhone = '',
     this.pickupTrip,
     this.dropoffTrip,
+    this.pendingAdjustment,
     this.distanceKm = 0,
     this.estimatedHours = 0,
   });
@@ -319,6 +327,7 @@ class PartnerOrder {
         .toList();
     return PartnerOrder(
       id: id,
+      laundryId: (json['laundryId'] as num? ?? 0).toInt(),
       number: '$id',
       customerName: json['customerName'] as String? ?? '',
       customerPhone: json['customerPhoneNumber'] as String? ?? '',
@@ -340,6 +349,9 @@ class PartnerOrder {
       paymentStatus: PaymentStatus.fromApi(json['paymentStatus']),
       pickupTrip: _readTrip(json['pickupTrip'], DeliveryTripType.pickup),
       dropoffTrip: _readTrip(json['dropoffTrip'], DeliveryTripType.dropoff),
+      pendingAdjustment: json['pendingAdjustment'] is Map<String, dynamic>
+          ? OrderAdjustmentResult.fromJson(json['pendingAdjustment'])
+          : null,
     );
   }
 
@@ -352,16 +364,28 @@ class PartnerOrder {
   /// آخر مرحلة وصلها الطلب في التايم لاين
   PartnerOrderStage get stage => status.stage;
 
-  /// بينسخ الطلب بحالة جديدة، والباقي بيفضل زي ما هو
-  PartnerOrder copyWith({required PartnerOrderStatus status}) => PartnerOrder(
+  /// رحلة الاستلام أو التسليم اللي ليها الـ id ده، لو تبع الطلب ده
+  DeliveryTrip? tripById(int tripId) {
+    if (pickupTrip?.id == tripId) return pickupTrip;
+    if (dropoffTrip?.id == tripId) return dropoffTrip;
+    return null;
+  }
+
+  /// بينسخ الطلب بحالة أو رحلات جديدة، والباقي بيفضل زي ما هو
+  PartnerOrder copyWith({
+    PartnerOrderStatus? status,
+    DeliveryTrip? pickupTrip,
+    DeliveryTrip? dropoffTrip,
+  }) => PartnerOrder(
     id: id,
+    laundryId: laundryId,
     number: number,
     customerName: customerName,
     items: items,
     address: address,
     createdAt: createdAt,
     total: total,
-    status: status,
+    status: status ?? this.status,
     itemsTotal: itemsTotal,
     pickupFee: pickupFee,
     dropoffFee: dropoffFee,
@@ -369,8 +393,9 @@ class PartnerOrder {
     customerPhone: customerPhone,
     pickupContactName: pickupContactName,
     pickupContactPhone: pickupContactPhone,
-    pickupTrip: pickupTrip,
-    dropoffTrip: dropoffTrip,
+    pickupTrip: pickupTrip ?? this.pickupTrip,
+    dropoffTrip: dropoffTrip ?? this.dropoffTrip,
+    pendingAdjustment: pendingAdjustment,
     distanceKm: distanceKm,
     estimatedHours: estimatedHours,
   );

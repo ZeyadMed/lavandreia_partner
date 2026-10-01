@@ -469,5 +469,18 @@
   "failure_reason_CustomerNotAvailable": "العميل غير متواجد",
   "failure_reason_CustomerNotResponding": "العميل لا يرد",
   "failure_reason_WrongAddress": "العنوان غير صحيح",
-  "failure_reason_Other": "سبب آخر"
+  "failure_reason_Other": "سبب آخر",
+  "new_order_received": "طلب جديد!",
+  "new_order_pieces": "{} قطعة",
+  "new_order_accepted": "تم قبول الطلب",
+  "new_order_rejected": "تم رفض الطلب",
+  "realtime_reconnecting": "جاري إعادة الاتصال…",
+  "realtime_pickup_driver_arrived": "الدليفري وصل بهدوم الطلب {}، أدخل كود الاستلام",
+  "realtime_dropoff_driver_arrived": "دليفري التسليم وصل لطلب {}، أدخل كود التسليم",
+  "realtime_pickup_failed": "فشل استلام الطلب {}، اختر إعادة المحاولة أو الإلغاء",
+  "realtime_delivery_failed": "فشل توصيل الطلب {}، أكّد رجوع الهدوم للمغسلة",
+  "realtime_adjustment_approved": "العميل وافق على تعديل الطلب",
+  "realtime_adjustment_rejected": "العميل رفض تعديل الطلب",
+  "realtime_trip_requested": "{} طلب الرحلة",
+  "realtime_trip_withdrawn": "الدليفري انسحب والرحلة اتفتحت تاني"
 }

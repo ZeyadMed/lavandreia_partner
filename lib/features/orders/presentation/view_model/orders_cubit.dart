@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/bloc/genaric_pagination.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
@@ -34,12 +35,54 @@ class OrdersCubit extends GenericPaginationCubit<PartnerOrder> {
 
   static void notifyServerChanged(int? orderId) => _serverChanges.add(orderId);
 
+  /// طلب جديد وصل لحظياً من OrderCreated، بيتضاف أول الليستة
+  static final StreamController<PartnerOrder> _created =
+      StreamController<PartnerOrder>.broadcast();
+
+  static Stream<PartnerOrder> get created => _created.stream;
+
+  static void notifyCreated(PartnerOrder order) => _created.add(order);
+
+  /// دليفري طلب رحلة أو لغى طلبه، [delta] بـ 1 أو -1
+  /// الطلب بيتعرف من الرحلة لأن طلب الدليفري مفيهوش orderId
+  static final StreamController<({int tripId, int delta})>
+  _tripRequestCountChanges =
+      StreamController<({int tripId, int delta})>.broadcast();
+
+  static Stream<({int tripId, int delta})> get tripRequestCountChanges =>
+      _tripRequestCountChanges.stream;
+
+  static void notifyTripRequestCountChanged(int tripId, int delta) =>
+      _tripRequestCountChanges.add((tripId: tripId, delta: delta));
+
+  /// الطلب بعدد طلبات الدليفرية الجديد، أو null لو الرحلة مش تبعه
+  static PartnerOrder? withTripRequestDelta(
+    PartnerOrder order,
+    int tripId,
+    int delta,
+  ) {
+    final trip = order.tripById(tripId);
+    if (trip == null) return null;
+    final count = trip.pendingRequestsCount + delta;
+    final updated = trip.copyWith(pendingRequestsCount: count < 0 ? 0 : count);
+    return identical(trip, order.pickupTrip)
+        ? order.copyWith(pickupTrip: updated)
+        : order.copyWith(dropoffTrip: updated);
+  }
+
   late final StreamSubscription<PartnerOrder> _changesSubscription;
   late final StreamSubscription<int?> _serverChangesSubscription;
+  late final StreamSubscription<PartnerOrder> _createdSubscription;
+  late final StreamSubscription<({int tripId, int delta})>
+  _tripRequestCountSubscription;
 
   OrdersCubit(this._dataSource, {this.pageSize = 10}) {
     _changesSubscription = changes.listen(_applyChange);
     _serverChangesSubscription = serverChanges.listen((_) => refresh());
+    _createdSubscription = created.listen(_insertCreated);
+    _tripRequestCountSubscription = tripRequestCountChanges.listen(
+      (change) => _applyTripRequestDelta(change.tripId, change.delta),
+    );
   }
 
   @override
@@ -64,10 +107,32 @@ class OrdersCubit extends GenericPaginationCubit<PartnerOrder> {
     emit(state.copyWith(items: items));
   }
 
+  /// لو الطلب موجود أصلاً (زي بعد refresh) بيتبدّل بس من غير ما يتكرر
+  /// ولو الليستة لسه بتتحمل من الأول، الطلب هييجي معاها
+  void _insertCreated(PartnerOrder order) {
+    if (state.isInitial || state.isLoading || state.isFailure) return;
+    if (state.items.any((item) => item.id == order.id)) {
+      _applyChange(order);
+      return;
+    }
+    totalCount++;
+    emit(state.copyWith(items: [order, ...state.items]));
+  }
+
+  void _applyTripRequestDelta(int tripId, int delta) {
+    final items = [...state.items];
+    final index = items.indexWhere((order) => order.tripById(tripId) != null);
+    if (index == -1) return;
+    items[index] = withTripRequestDelta(items[index], tripId, delta)!;
+    emit(state.copyWith(items: items));
+  }
+
   @override
   Future<void> close() {
     _changesSubscription.cancel();
     _serverChangesSubscription.cancel();
+    _createdSubscription.cancel();
+    _tripRequestCountSubscription.cancel();
     return super.close();
   }
 }

@@ -2,6 +2,9 @@ abstract interface class Endpoints {
   static const String baseUrl = 'https://lavanderia.runasp.net/';
   static const String updateLocation = '';
 
+  /// الـ SignalR hub، التوكن بيتبعت فيه كـ ?access_token
+  static const String ordersHub = 'hubs/orders';
+
   // ****************************** Auth ********************************
   static const String register = 'api/auth/laundry/register';
 

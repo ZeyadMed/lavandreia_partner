@@ -1,15 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
 
 /// الدليفرية اللي طلبوا رحلة واحدة، الداتا في state.items وبتتجاب بـ fetchData
+/// وبتتحدث لحظياً لما دليفري يطلب الرحلة أو يلغي طلبه
 class TripRequestsCubit extends BaseCubit<TripRequest> {
-  TripRequestsCubit(TripsDataSource dataSource, int tripId)
-    : super(fetchFunction: () => dataSource.getRequests(tripId));
+  final int tripId;
+
+  late final StreamSubscription<TripRequest> _realtimeSubscription;
+
+  TripRequestsCubit(TripsDataSource dataSource, this.tripId)
+    : super(fetchFunction: () => dataSource.getRequests(tripId)) {
+    _realtimeSubscription = RealtimeEvents.tripRequests
+        .where((request) => request.deliveryTripId == tripId)
+        .listen(_applyRealtime);
+  }
+
+  /// الملغي بيتشال، والجديد بيتضاف تحت أو بيتبدّل لو موجود
+  void _applyRealtime(TripRequest request) {
+    if (!state.isSuccess) return;
+    final others = state.items.where((item) => item.id != request.id);
+    final items = request.isCancelled
+        ? others.toList()
+        : state.items.any((item) => item.id == request.id)
+        ? [
+            for (final item in state.items)
+              item.id == request.id ? request : item,
+          ]
+        : [...state.items, request];
+    emit(state.copyWith(items: items));
+  }
+
+  @override
+  Future<void> close() {
+    _realtimeSubscription.cancel();
+    return super.close();
+  }
 
   /// بيبدّل الطلب في الليستة بعد القبول أو الرفض من غير ما نجيبها تاني
   void replace(TripRequest updated) {

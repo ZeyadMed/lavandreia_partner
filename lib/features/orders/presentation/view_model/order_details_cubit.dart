@@ -14,6 +14,8 @@ class OrderDetailsCubit extends Cubit<BaseState<PartnerOrder>> {
 
   late final StreamSubscription<PartnerOrder> _changesSubscription;
   late final StreamSubscription<int?> _serverChangesSubscription;
+  late final StreamSubscription<({int tripId, int delta})>
+  _tripRequestCountSubscription;
 
   OrderDetailsCubit(this._dataSource, PartnerOrder order)
     : super(BaseState<PartnerOrder>(status: Status.success, data: order)) {
@@ -21,8 +23,19 @@ class OrderDetailsCubit extends Cubit<BaseState<PartnerOrder>> {
       if (updated.id == this.order.id) emit(state.copyWith(data: updated));
     });
     // إشعار عن الطلب ده، زي دليفري طلب الرحلة أو العميل رد على التعديل
+    // وnull معناها إعادة مزامنة بعد رجوع الاتصال، فبنحدّث برضه
     _serverChangesSubscription = OrdersCubit.serverChanges.listen((orderId) {
-      if (orderId == this.order.id) refresh();
+      if (orderId == null || orderId == this.order.id) refresh();
+    });
+    _tripRequestCountSubscription = OrdersCubit.tripRequestCountChanges.listen((
+      change,
+    ) {
+      final updated = OrdersCubit.withTripRequestDelta(
+        this.order,
+        change.tripId,
+        change.delta,
+      );
+      if (updated != null) emit(state.copyWith(data: updated));
     });
   }
 
@@ -43,6 +56,7 @@ class OrderDetailsCubit extends Cubit<BaseState<PartnerOrder>> {
   Future<void> close() {
     _changesSubscription.cancel();
     _serverChangesSubscription.cancel();
+    _tripRequestCountSubscription.cancel();
     return super.close();
   }
 }

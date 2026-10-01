@@ -51,6 +51,10 @@ class OrderDetailsScreen extends StatefulWidget {
 
   const OrderDetailsScreen({super.key, required this.order});
 
+  /// الطلبات اللي صفحة تفاصيلها مفتوحة دلوقتي
+  /// الـ realtime مابيظهرش بانر عن طلب صفحته قدام المستخدم
+  static final Set<int> openOrderIds = {};
+
   @override
   State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
 }
@@ -66,7 +70,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    OrderDetailsScreen.openOrderIds.add(widget.order.id);
+  }
+
+  @override
   void dispose() {
+    OrderDetailsScreen.openOrderIds.remove(widget.order.id);
     _detailsCubit.close();
     _actionCubit.close();
     super.dispose();

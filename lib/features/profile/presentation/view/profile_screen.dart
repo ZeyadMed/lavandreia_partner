@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_service.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
@@ -70,6 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // الريكوست بيمسح التوكنز بنفسه حتى لو فشل، فبنكمل للوجين في الحالتين
     context.showLoadingDialog(message: 'logging_out');
+    await RealtimeService.disconnect();
     await getIt<LoginDataSource>().logout();
     if (!mounted) return;
     Navigator.of(context).pop();

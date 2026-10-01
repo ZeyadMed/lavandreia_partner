@@ -466,5 +466,18 @@
   "failure_reason_CustomerNotAvailable": "Customer not available",
   "failure_reason_CustomerNotResponding": "Customer not responding",
   "failure_reason_WrongAddress": "Wrong address",
-  "failure_reason_Other": "Other"
+  "failure_reason_Other": "Other",
+  "new_order_received": "New order!",
+  "new_order_pieces": "{} pieces",
+  "new_order_accepted": "Order accepted",
+  "new_order_rejected": "Order rejected",
+  "realtime_reconnecting": "Reconnecting…",
+  "realtime_pickup_driver_arrived": "The driver arrived with order {}. Enter the pickup code",
+  "realtime_dropoff_driver_arrived": "The dropoff driver arrived for order {}. Enter the handover code",
+  "realtime_pickup_failed": "Pickup failed for order {}. Retry or cancel",
+  "realtime_delivery_failed": "Delivery failed for order {}. Confirm the clothes came back",
+  "realtime_adjustment_approved": "The customer approved the order adjustment",
+  "realtime_adjustment_rejected": "The customer rejected the order adjustment",
+  "realtime_trip_requested": "{} requested the trip",
+  "realtime_trip_withdrawn": "The driver withdrew. The trip is open again"
 }

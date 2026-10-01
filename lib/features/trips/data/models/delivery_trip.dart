@@ -25,9 +25,34 @@ enum DeliveryTripType {
   }
 }
 
+/// مين المفروض يدخل كود التأكيد دلوقتي، نفس awaitingConfirmationBy في الباك إند
+/// رحلة التسليم ليها كودين: الأول للمغسلة وهي بتسلّم الدليفري، والتاني للعميل
+enum TripConfirmationParty {
+  laundry(apiName: 'Laundry'),
+  customer(apiName: 'Customer');
+
+  final String apiName;
+
+  const TripConfirmationParty({required this.apiName});
+
+  static TripConfirmationParty? fromApi(Object? value) {
+    final name = '${value ?? ''}'.toLowerCase();
+    for (final party in values) {
+      if (party.apiName.toLowerCase() == name) return party;
+    }
+    return null;
+  }
+}
+
 class DeliveryTrip {
   final int id;
   final DeliveryTripType type;
+
+  /// الطلب اللي الرحلة دي تبعه، 0 لو السيرفر مابعتهوش
+  final int orderId;
+
+  /// أجرة الدليفري على الرحلة
+  final double fee;
 
   /// null لحد ما المغسلة توافق على طلب دليفري
   final int? driverId;
@@ -44,9 +69,24 @@ class DeliveryTrip {
   /// عدد الدليفرية اللي طلبوا الرحلة ولسه المغسلة مردتش عليهم
   final int pendingRequestsCount;
 
+  /// الرحلة مستنية حد يدخل الكود، و [awaitingConfirmationBy] بيقول مين
+  final bool isAwaitingConfirmation;
+  final TripConfirmationParty? awaitingConfirmationBy;
+
+  /// اللي استلم أكّد بالكود: المغسلة في الاستلام والعميل في التسليم
+  final bool isConfirmed;
+
+  /// في التسليم بس: المغسلة سلّمت الهدوم للدليفري
+  final bool isHandedOver;
+
+  /// الرحلة خلصت ومبقاش عليها أي أكشن
+  final bool isClosed;
+
   const DeliveryTrip({
     required this.id,
     required this.type,
+    this.orderId = 0,
+    this.fee = 0,
     this.driverId,
     this.driverName = '',
     this.driverPhone = '',
@@ -54,13 +94,25 @@ class DeliveryTrip {
     this.failureReason = '',
     this.failureNote = '',
     this.pendingRequestsCount = 0,
+    this.isAwaitingConfirmation = false,
+    this.awaitingConfirmationBy,
+    this.isConfirmed = false,
+    this.isHandedOver = false,
+    this.isClosed = false,
   });
 
   /// الدليفري بيتعيّن على الرحلة بس لما المغسلة توافق على طلبه
   bool get hasDriver => driverId != null || driverName.isNotEmpty;
 
-  /// { "id", "type", "driverId", "driverName", "driverPhoneNumber",
-  /// "photoUrls", "failureReason", "failureNote", "pendingRequestsCount", .. }
+  /// الدليفري مستني المغسلة تدخل الكود اللي معاه
+  bool get needsLaundryConfirmation =>
+      isAwaitingConfirmation &&
+      awaitingConfirmationBy == TripConfirmationParty.laundry;
+
+  /// { "id", "orderId", "type", "driverId", "driverName", "driverPhoneNumber",
+  /// "fee", "isAwaitingConfirmation", "awaitingConfirmationBy", "isConfirmed",
+  /// "isHandedOver", "isClosed", "photoUrls", "failureReason", "failureNote",
+  /// "pendingRequestsCount", .. }
   factory DeliveryTrip.fromJson(
     Map<String, dynamic> json, {
     required DeliveryTripType type,
@@ -68,6 +120,8 @@ class DeliveryTrip {
     return DeliveryTrip(
       id: (json['id'] as num? ?? 0).toInt(),
       type: DeliveryTripType.fromApi(json['type']) ?? type,
+      orderId: (json['orderId'] as num? ?? 0).toInt(),
+      fee: (json['fee'] as num? ?? 0).toDouble(),
       driverId: json['driverId'] as int?,
       driverName: json['driverName'] as String? ?? '',
       driverPhone: json['driverPhoneNumber'] as String? ?? '',
@@ -77,6 +131,33 @@ class DeliveryTrip {
       failureReason: json['failureReason'] as String? ?? '',
       failureNote: json['failureNote'] as String? ?? '',
       pendingRequestsCount: (json['pendingRequestsCount'] as num? ?? 0).toInt(),
+      isAwaitingConfirmation: json['isAwaitingConfirmation'] as bool? ?? false,
+      awaitingConfirmationBy: TripConfirmationParty.fromApi(
+        json['awaitingConfirmationBy'],
+      ),
+      isConfirmed: json['isConfirmed'] as bool? ?? false,
+      isHandedOver: json['isHandedOver'] as bool? ?? false,
+      isClosed: json['isClosed'] as bool? ?? false,
     );
   }
+
+  /// بيستخدمه الـ realtime عشان يحدّث عدد الطلبات من غير ما يجيب الطلب تاني
+  DeliveryTrip copyWith({int? pendingRequestsCount}) => DeliveryTrip(
+    id: id,
+    type: type,
+    orderId: orderId,
+    fee: fee,
+    driverId: driverId,
+    driverName: driverName,
+    driverPhone: driverPhone,
+    photoUrls: photoUrls,
+    failureReason: failureReason,
+    failureNote: failureNote,
+    pendingRequestsCount: pendingRequestsCount ?? this.pendingRequestsCount,
+    isAwaitingConfirmation: isAwaitingConfirmation,
+    awaitingConfirmationBy: awaitingConfirmationBy,
+    isConfirmed: isConfirmed,
+    isHandedOver: isHandedOver,
+    isClosed: isClosed,
+  );
 }

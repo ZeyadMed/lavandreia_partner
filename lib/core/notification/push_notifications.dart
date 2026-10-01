@@ -1,17 +1,20 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/helpers/logger.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_service.dart';
+import 'package:lavanderia_partner/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/order_details_screen.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 import 'package:lavanderia_partner/main.dart';
 
 /// إشعارات الـ push من FCM، زي OrderCreated و TripRequested و AdjustmentResolved
 /// أي إشعار بيحدّث ليستات الطلبات، واللي فيه orderId بيحدّث الطلب لو مفتوح،
-/// والضغط عليه بيفتح تفاصيل الطلب
+/// والضغط عليه بيفتح تفاصيل الطلب، ولو مفيش orderId بيفتح صفحة الإشعارات
+/// والأبلكيشن مفتوح والـ realtime متصل، الحدث بيوصل منه فالإشعار مابيظهرش
 abstract final class PushNotifications {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -23,8 +26,9 @@ abstract final class PushNotifications {
     importance: Importance.high,
   );
 
-  /// الطلب اللي الأبلكيشن اتفتح من الإشعار بتاعه وهو مقفول خالص
+  /// الأبلكيشن اتفتح من إشعار وهو مقفول خالص، و [_pendingOrderId] الطلب بتاعه
   /// بيتفتح لما الرئيسية تظهر، عشان السبلاش مايغطيش عليه
+  static bool _hasPendingOpen = false;
   static int? _pendingOrderId;
 
   /// الرئيسية ظهرت، فأي طلب جاي من إشعار يتفتح على طول
@@ -47,12 +51,13 @@ abstract final class PushNotifications {
     // الإذن الأول، لأن iOS مش بيدي الـ APNs token من غيره
     await messaging.requestPermission().timeout(const Duration(minutes: 1));
     unawaited(CacheManager.fetchAndSaveFcmToken());
-    // في iOS الإشعار بيظهر لوحده والأبلكيشن مفتوح، في أندرويد بنظهره إحنا
+    // والأبلكيشن مفتوح إحنا اللي بنظهر الإشعار في الاتنين، عشان مايظهرش
+    // لو الـ realtime متصل ووصّل نفس الحدث
     await messaging
         .setForegroundNotificationPresentationOptions(
-          alert: true,
+          alert: false,
           badge: true,
-          sound: true,
+          sound: false,
         )
         .timeout(timeout);
 
@@ -85,6 +90,7 @@ abstract final class PushNotifications {
 
     final initialMessage = await messaging.getInitialMessage().timeout(timeout);
     if (initialMessage == null) return;
+    _hasPendingOpen = true;
     _pendingOrderId = _orderIdOf(initialMessage);
     // لو الرئيسية ظهرت قبل ما الإشعار يوصل
     if (_isHomeReady) openPendingOrder();
@@ -93,7 +99,9 @@ abstract final class PushNotifications {
   /// بتتنادى من الرئيسية أول ما تظهر
   static void openPendingOrder() {
     _isHomeReady = true;
+    if (!_hasPendingOpen) return;
     final orderId = _pendingOrderId;
+    _hasPendingOpen = false;
     _pendingOrderId = null;
     _openOrder(orderId);
   }
@@ -104,11 +112,14 @@ abstract final class PushNotifications {
 
   static void _onForegroundMessage(RemoteMessage message) {
     logger('Push received: ${message.data}');
+    // الحدث نفسه وصل من الـ realtime واتعرض جوه الأبلكيشن
+    if (RealtimeService.isLive) return;
+
     final orderId = _orderIdOf(message);
     OrdersCubit.notifyServerChanged(orderId);
 
     final notification = message.notification;
-    if (notification == null || !Platform.isAndroid) return;
+    if (notification == null) return;
     _localNotifications.show(
       message.hashCode,
       notification.title,
@@ -122,14 +133,24 @@ abstract final class PushNotifications {
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
         ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentSound: true,
+        ),
       ),
       payload: orderId?.toString(),
     );
   }
 
+  /// الـ push لسه مش فيه data، فمن غير orderId بنفتح ليستة الإشعارات
   static void _openOrder(int? orderId) {
     final context = navigatorKey.currentContext;
-    if (orderId == null || context == null) return;
-    openOrderDetailsById(context, orderId);
+    if (context == null) return;
+    if (orderId != null) {
+      openOrderDetailsById(context, orderId);
+      return;
+    }
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
   }
 }

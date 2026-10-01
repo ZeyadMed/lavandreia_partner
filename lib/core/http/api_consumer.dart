@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_service.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/helpers/logger.dart';
 import 'package:lavanderia_partner/core/http/auth_interceptor.dart';
@@ -435,6 +436,7 @@ final class BaseApiConsumer implements ApiConsumer {
     _isHandlingSessionExpiry = true;
     try {
       navigatorKey.currentContext?.showErrorMessage('عاود التسجيل من فضلك');
+      await RealtimeService.disconnect();
       await DI.resetGetItAndInit();
       navigatorKey.currentContext?.go(AppRouter.login);
     } finally {

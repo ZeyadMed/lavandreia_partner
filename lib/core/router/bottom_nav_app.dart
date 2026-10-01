@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:lavanderia_partner/core/common_widget/custom_error_message.dart';
 import 'package:lavanderia_partner/core/notification/push_notifications.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_service.dart';
 import 'package:lavanderia_partner/core/router/bottom_nav_controller.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
@@ -28,7 +30,7 @@ class _BottomNavAppState extends State<BottomNavApp> {
   /// الترتيب زي الديزاين: الرئيسية - الطلبات - الخدمات - حسابي
   /// وفي العربي الصف بيتقلب لوحده فالرئيسية بتظهر على اليمين
   final List<_BottomNavItemData> _items = const [
-    // النقطة الحمراء على الرئيسية معناها فيه طلبات جديدة مستنية رد
+    // النقطة الحمراء على الرئيسية معناها فيه إشعارات جديدة لسه ماتشافتش
     _BottomNavItemData(
       labelKey: 'home',
       icon: Icons.home_outlined,
@@ -51,6 +53,8 @@ class _BottomNavAppState extends State<BottomNavApp> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => PushNotifications.openPendingOrder(),
     );
+    // كل المسارات بعد اللوجين بتوصل هنا، والاتصال بيتقفل مع تسجيل الخروج
+    RealtimeService.connect();
   }
 
   @override
@@ -148,7 +152,18 @@ class _BottomNavAppState extends State<BottomNavApp> {
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: scaffoldColor,
-        body: IndexedStack(index: _selectedIndex, children: children),
+        // الشريط فوق الصفحات عشان مايزقّش الهيدر بتاعها لتحت
+        body: Stack(
+          children: [
+            IndexedStack(index: _selectedIndex, children: children),
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _RealtimeStatusBar(),
+            ),
+          ],
+        ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: navBarColor,
@@ -200,13 +215,19 @@ class _BottomNavAppState extends State<BottomNavApp> {
                               Positioned(
                                 top: -1.h,
                                 right: -3.w,
-                                child: Container(
-                                  width: 6.w,
-                                  height: 6.w,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.redColor2,
-                                    shape: BoxShape.circle,
-                                  ),
+                                child: ValueListenableBuilder<bool>(
+                                  valueListenable:
+                                      RealtimeEvents.hasUnreadNotifications,
+                                  builder: (context, hasUnread, _) => hasUnread
+                                      ? Container(
+                                          width: 6.w,
+                                          height: 6.w,
+                                          decoration: const BoxDecoration(
+                                            color: AppColors.redColor2,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
                                 ),
                               ),
                           ],
@@ -235,6 +256,43 @@ class _BottomNavAppState extends State<BottomNavApp> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// شريط رفيع فوق الصفحات وقت ما الاتصال اللحظي بيرجع
+class _RealtimeStatusBar extends StatelessWidget {
+  const _RealtimeStatusBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<RealtimeStatus>(
+      valueListenable: RealtimeService.status,
+      builder: (context, status, _) {
+        final isReconnecting = status == RealtimeStatus.reconnecting;
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: isReconnecting
+              ? Container(
+                  width: double.infinity,
+                  color: const Color(0xffB26A00),
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 2.h,
+                    bottom: 2.h,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'realtime_reconnecting'.tr(),
+                    style: TextStyles.blackBold14.copyWith(
+                      fontSize: 11.sp,
+                      color: AppColors.whiteColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

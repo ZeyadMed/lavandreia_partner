@@ -70,9 +70,9 @@ class OrderActionsPanel extends StatelessWidget {
         ],
       ),
       // الكود بيتأكد لما الدليفري المتعيّن يوصل المغسلة بالهدوم
-      // الزرار ظاهر طول ما فيه رحلة، لأن بيانات الدليفري مش مضمون ترجع في
-      // ريسبونس الطلب، والسيرفر هو اللي بيرفض لو مفيش دليفري لسه
-      PartnerOrderStatus.awaitingPickup when order.pickupTrip != null =>
+      // الزرار بيظهر بس لما السيرفر يقول إن الرحلة مستنية تأكيد المغسلة
+      PartnerOrderStatus.awaitingPickup
+          when order.pickupTrip?.needsLaundryConfirmation ?? false =>
         OrderActionButton(
           labelKey: 'confirm_pickup_received',
           onTap: onConfirmPickup,
@@ -100,8 +100,9 @@ class OrderActionsPanel extends StatelessWidget {
         onTap: isBusy ? null : onMarkReady,
       ),
       // الكود بيتأكد لما دليفري التسليم ييجي ياخد الهدوم
+      // رحلة التسليم فيها كود تاني للعميل، فلازم يكون الدور على المغسلة
       PartnerOrderStatus.awaitingDropoffCollection
-          when order.dropoffTrip != null =>
+          when order.dropoffTrip?.needsLaundryConfirmation ?? false =>
         OrderActionButton(
           labelKey: 'confirm_handover',
           onTap: onConfirmHandover,

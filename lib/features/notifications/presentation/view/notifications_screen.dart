@@ -8,6 +8,7 @@ import 'package:lavanderia_partner/core/common_widget/custom_app_bar.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
@@ -31,6 +32,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       NotificationsCubit(getIt<NotificationsDataSource>())
         ..initPagination()
         ..fetch(page: 1);
+
+  @override
+  void initState() {
+    super.initState();
+    // اليوزر شاف الإشعارات فالنقطة الحمراء بتختفي
+    RealtimeEvents.hasUnreadNotifications.value = false;
+  }
 
   @override
   void dispose() {
