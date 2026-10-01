@@ -10,6 +10,7 @@ import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_tile.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 
 /// بوتوم شيت إدخال الكود اللي الدليفري بيوريه للمغسلة،
@@ -116,6 +117,14 @@ class _TripOtpSheetState extends State<_TripOtpSheet> {
                   color: AppColors.greyColor3,
                 ),
               ),
+              // صور الهدوم اللي الدليفري رفعها مع collect، تراجعها قبل التأكيد
+              if (widget.trip.photoUrls.isNotEmpty) ...[
+                Gap(18.h),
+                TripPhotosStrip(
+                  photoUrls: widget.trip.photoUrls,
+                  labelKey: 'review_driver_photos',
+                ),
+              ],
               Gap(20.h),
               _CodeField(
                 controller: _controller,

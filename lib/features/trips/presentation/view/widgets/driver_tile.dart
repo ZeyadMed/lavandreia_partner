@@ -28,45 +28,65 @@ class AssignedDriverCard extends StatelessWidget {
           // صور الهدوم وقت الاستلام من العميل، بترجع المغسلة ليها وهي بتطابق
           if (trip.photoUrls.isNotEmpty) ...[
             Gap(12.h),
-            LocalizedLabel(
-              text: 'clothes_photos',
-              style: TextStyles.darkRegular12.copyWith(
-                color: AppColors.greyColor4,
-              ),
-            ),
-            Gap(8.h),
-            SizedBox(
-              height: 64.w,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: trip.photoUrls.length,
-                separatorBuilder: (_, _) => Gap(8.w),
-                itemBuilder: (context, index) {
-                  final url = trip.photoUrls[index];
-                  return GestureDetector(
-                    onTap: () => _showPhoto(context, url),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10.r),
-                      child: CachedNetworkImage(
-                        imageUrl: url,
-                        width: 64.w,
-                        height: 64.w,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppColors.semiWhiteColor3),
-                        errorWidget: (_, _, _) => Container(
-                          color: AppColors.semiWhiteColor3,
-                          child: const Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            TripPhotosStrip(photoUrls: trip.photoUrls),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// صور الهدوم اللي الدليفري رفعها، والضغط على أي صورة بيفتحها بالحجم الكامل
+class TripPhotosStrip extends StatelessWidget {
+  final List<String> photoUrls;
+  final String labelKey;
+
+  const TripPhotosStrip({
+    super.key,
+    required this.photoUrls,
+    this.labelKey = 'clothes_photos',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LocalizedLabel(
+          text: labelKey,
+          style: TextStyles.darkRegular12.copyWith(color: AppColors.greyColor4),
+        ),
+        Gap(8.h),
+        SizedBox(
+          height: 64.w,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: photoUrls.length,
+            separatorBuilder: (_, _) => Gap(8.w),
+            itemBuilder: (context, index) {
+              final url = photoUrls[index];
+              return GestureDetector(
+                onTap: () => _showPhoto(context, url),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10.r),
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    width: 64.w,
+                    height: 64.w,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) =>
+                        Container(color: AppColors.semiWhiteColor3),
+                    errorWidget: (_, _, _) => Container(
+                      color: AppColors.semiWhiteColor3,
+                      child: const Icon(Icons.broken_image_outlined),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

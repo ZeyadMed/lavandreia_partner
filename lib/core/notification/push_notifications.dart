@@ -50,6 +50,8 @@ abstract final class PushNotifications {
     final messaging = FirebaseMessaging.instance;
     // الإذن الأول، لأن iOS مش بيدي الـ APNs token من غيره
     await messaging.requestPermission().timeout(const Duration(minutes: 1));
+    // قبل الـ fetch، عشان لو الـ APNs token اتأخر الـ FCM token يوصل من هنا
+    messaging.onTokenRefresh.listen(CacheManager.saveFcmTokenToken);
     unawaited(CacheManager.fetchAndSaveFcmToken());
     // والأبلكيشن مفتوح إحنا اللي بنظهر الإشعار في الاتنين، عشان مايظهرش
     // لو الـ realtime متصل ووصّل نفس الحدث
@@ -82,7 +84,6 @@ abstract final class PushNotifications {
         >()
         ?.createNotificationChannel(_channel);
 
-    messaging.onTokenRefresh.listen(CacheManager.saveFcmTokenToken);
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(
       (message) => _openOrder(_orderIdOf(message)),

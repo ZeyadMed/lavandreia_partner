@@ -267,12 +267,22 @@ abstract final class RealtimeService {
     }
     if (_lastActionPrompt[order.id] == messageKey) return;
     _lastActionPrompt[order.id] = messageKey;
-    // الصفحة مفتوحة والزرار ظاهر قدامه
-    if (OrderDetailsScreen.openOrderIds.contains(order.id)) return;
+    final isPageOpen = OrderDetailsScreen.openOrderIds.contains(order.id);
+    final isDriverArrived =
+        messageKey == 'realtime_pickup_driver_arrived' ||
+        messageKey == 'realtime_dropoff_driver_arrived';
+    if (isDriverArrived) {
+      // بنجيب الطلب من السيرفر عشان الصور والرحلة كاملة قبل ما يدخل الكود
+      OrdersCubit.notifyServerChanged(order.id);
+    } else if (isPageOpen) {
+      // الصفحة مفتوحة والزرار ظاهر قدامه
+      return;
+    }
+    // المندوب واقف قدام المغسلة، فالتنبيه بيظهر حتى لو الصفحة مفتوحة
     _showBanner(
       messageKey.tr(args: [order.displayNumber]),
       icon: Icons.notifications_active_outlined,
-      orderId: order.id,
+      orderId: isPageOpen ? null : order.id,
     );
   }
 

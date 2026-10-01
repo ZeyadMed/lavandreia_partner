@@ -83,7 +83,7 @@ class CacheManager {
       // وده بياخد ثواني بعد إذن الإشعارات، فبنستناه شوية قبل ما نطلب الـ FCM
       if (Platform.isIOS) {
         String? apnsToken = await messaging.getAPNSToken();
-        for (var i = 0; apnsToken == null && i < 5; i++) {
+        for (var i = 0; apnsToken == null && i < 20; i++) {
           await Future.delayed(const Duration(seconds: 1));
           apnsToken = await messaging.getAPNSToken();
         }

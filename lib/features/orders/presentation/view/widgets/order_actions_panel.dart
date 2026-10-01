@@ -100,7 +100,8 @@ class OrderActionsPanel extends StatelessWidget {
         onTap: isBusy ? null : onMarkReady,
       ),
       // الكود بيتأكد لما دليفري التسليم ييجي ياخد الهدوم
-      // رحلة التسليم فيها كود تاني للعميل، فلازم يكون الدور على المغسلة
+      // الزرار بيظهر بس لما السيرفر يقول إن الدور على المغسلة،
+      // وقبل كده البانر بيقول في انتظار وصول المندوب
       PartnerOrderStatus.awaitingDropoffCollection
           when order.dropoffTrip?.needsLaundryConfirmation ?? false =>
         OrderActionButton(
@@ -142,6 +143,9 @@ class OrderStatusHint extends StatelessWidget {
   const OrderStatusHint({super.key, required this.order});
 
   String? get _hintKey => switch (order.status) {
+    PartnerOrderStatus.awaitingPickup
+        when order.pickupTrip?.needsLaundryConfirmation ?? false =>
+      'hint_pickup_driver_arrived',
     PartnerOrderStatus.awaitingPickup =>
       order.pickupTrip?.hasDriver ?? false
           ? 'hint_pickup_driver_assigned'
@@ -153,7 +157,9 @@ class OrderStatusHint extends StatelessWidget {
     PartnerOrderStatus.ready => 'hint_waiting_dropoff_driver',
     PartnerOrderStatus.outForDelivery => 'hint_out_for_delivery',
     PartnerOrderStatus.awaitingDropoffCollection =>
-      'hint_awaiting_dropoff_collection',
+      order.dropoffTrip?.needsLaundryConfirmation ?? false
+          ? 'hint_dropoff_driver_arrived'
+          : 'hint_awaiting_dropoff_collection',
     PartnerOrderStatus.pickupFailed => 'hint_pickup_failed',
     PartnerOrderStatus.deliveryFailed => 'hint_delivery_failed',
     _ => null,

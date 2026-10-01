@@ -104,9 +104,9 @@ class DeliveryTrip {
   /// الدليفري بيتعيّن على الرحلة بس لما المغسلة توافق على طلبه
   bool get hasDriver => driverId != null || driverName.isNotEmpty;
 
-  /// الدليفري مستني المغسلة تدخل الكود اللي معاه
+  /// الدليفري وصل المغسلة ومستنيها تدخل الكود اللي معاه
+  /// قبل كده الدليفري لسه في الطريق، فمفيش زرار تأكيد
   bool get needsLaundryConfirmation =>
-      isAwaitingConfirmation &&
       awaitingConfirmationBy == TripConfirmationParty.laundry;
 
   /// { "id", "orderId", "type", "driverId", "driverName", "driverPhoneNumber",
