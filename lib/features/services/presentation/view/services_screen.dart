@@ -15,6 +15,7 @@ import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/features/services/data/laundry_services_data_source.dart';
 import 'package:lavanderia_partner/features/services/data/models/my_service_item.dart';
 import 'package:lavanderia_partner/features/services/data/models/service_category.dart';
+import 'package:lavanderia_partner/features/services/presentation/view/add_services_screen.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/delete_services_dialog.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/edit_service_price_sheet.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/service_card.dart';
@@ -24,6 +25,7 @@ import 'package:lavanderia_partner/features/services/presentation/view_model/ser
 /// صفحة خدمات المغسلة: الأصناف بأسعارها متجمعة تحت كل خدمة
 /// تعديل السعر بيفضل محلي لحد ما اليوزر يضغط حفظ (PUT)
 /// والضغط المطوّل على صنف بيفتح وضع التحديد للحذف (DELETE)
+/// وزرار الإضافة بيفتح الخدمات المتاحة لإضافة أصناف جديدة
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
 
@@ -82,6 +84,21 @@ class _ServicesViewState extends State<_ServicesView> {
       for (final entry in _editedPrices.entries)
         ServiceItemPrice(serviceItemId: entry.key, price: entry.value),
     ]);
+  }
+
+  /// التعديلات اللي لسه متحفظتش بتفضل زي ما هي بعد ما اللستة تتجاب تاني
+  Future<void> _addServices(List<MyServiceItem> myItems) async {
+    final added = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddServicesScreen(
+          addedItemIds: {for (final item in myItems) item.serviceItemId},
+        ),
+      ),
+    );
+    if (added != true || !mounted) return;
+
+    context.read<MyServicesCubit>().fetchData();
+    context.showSuccessMessage('services_added'.tr());
   }
 
   void _startSelection(MyServiceItem item) {
@@ -194,7 +211,13 @@ class _ServicesViewState extends State<_ServicesView> {
                         onClose: _exitSelection,
                         onDelete: _deleteSelected,
                       )
-                    : _ServicesHeader(itemsCount: state.items.length),
+                    : _ServicesHeader(
+                        itemsCount: state.items.length,
+                        // لازم اللستة تكون اتجابت الأول، عشان الأصناف الموجودة تظهر "مضاف"
+                        onAdd: state.isSuccess
+                            ? () => _addServices(state.items)
+                            : null,
+                      ),
                 Expanded(child: _buildBody(context, state)),
                 // شريط الحفظ بيظهر بس لما يكون فيه تعديلات، ومش في وضع التحديد
                 if (_editedPrices.isNotEmpty && !_isSelectionMode)
@@ -239,6 +262,22 @@ class _ServicesViewState extends State<_ServicesView> {
                   textAlign: TextAlign.center,
                   style: TextStyles.darkRegular14.copyWith(
                     color: AppColors.greyColor3,
+                  ),
+                ),
+                Gap(8.h),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _addServices(state.items),
+                    icon: const Icon(
+                      Icons.add_rounded,
+                      color: AppColors.primaryColor,
+                    ),
+                    label: LocalizedLabel(
+                      text: 'add_service',
+                      style: TextStyles.darkBold14.copyWith(
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -315,31 +354,82 @@ class _ServiceGroup {
   _ServiceGroup({required this.serviceName});
 }
 
-/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف
+/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف، وجنبه زرار الإضافة
 class _ServicesHeader extends StatelessWidget {
   final int itemsCount;
 
-  const _ServicesHeader({required this.itemsCount});
+  /// null لحد ما أصناف المغسلة تتجاب
+  final VoidCallback? onAdd;
+
+  const _ServicesHeader({required this.itemsCount, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
     return _HeaderContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          LocalizedLabel(
-            text: 'services',
-            style: TextStyles.whiteText(22, weight: FontWeight.w800),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LocalizedLabel(
+                  text: 'services',
+                  style: TextStyles.whiteText(22, weight: FontWeight.w800),
+                ),
+                Gap(4.h),
+                Label(
+                  text: 'service_items_count'.tr(args: [itemsCount.toString()]),
+                  style: TextStyles.whiteText(
+                    13,
+                    weight: FontWeight.w400,
+                  ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                ),
+              ],
+            ),
           ),
-          Gap(4.h),
-          Label(
-            text: 'service_items_count'.tr(args: [itemsCount.toString()]),
-            style: TextStyles.whiteText(
-              13,
-              weight: FontWeight.w400,
-            ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
-          ),
+          Gap(12.w),
+          _AddButton(onTap: onAdd),
         ],
+      ),
+    );
+  }
+}
+
+/// زرار "إضافة خدمة" الأبيض الشفاف في الهيدر، بيبهت لما يكون مقفول
+class _AddButton extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _AddButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: onTap == null ? 0.5 : 1,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(20.r),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  size: 18.sp,
+                  color: AppColors.whiteColor,
+                ),
+                Gap(4.w),
+                LocalizedLabel(
+                  text: 'add_service',
+                  style: TextStyles.whiteText(13, weight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

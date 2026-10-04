@@ -110,6 +110,13 @@ class UpdateMyServicesCubit
     : super(dataSource.updateMyServices);
 }
 
+/// POST بالأصناف الجديدة بس من صفحة الإضافة
+class AddMyServicesCubit
+    extends MyServicesRequestCubit<List<ServiceItemPrice>> {
+  AddMyServicesCubit(LaundryServicesDataSource dataSource)
+    : super(dataSource.addMyServices);
+}
+
 /// DELETE بالـ serviceItemIds اللي اتحددت
 class DeleteMyServicesCubit extends MyServicesRequestCubit<List<int>> {
   DeleteMyServicesCubit(LaundryServicesDataSource dataSource)
