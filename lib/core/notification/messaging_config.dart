@@ -113,6 +113,7 @@ class MessagingConfig {
           log('User granted provisional permission');
           break;
         case AuthorizationStatus.denied:
+        case AuthorizationStatus.deniedPermanently:
           log('User denied permission');
           break;
         case AuthorizationStatus.notDetermined:
