@@ -74,6 +74,7 @@ dependencies:
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
   signalr_netcore: ^1.4.4
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -120,6 +121,7 @@ flutter:
     - assets/icons/
     - assets/fonts/
     - assets/images/
+    - assets/sounds/
     - assets/translations/
 
 flutter_assets:

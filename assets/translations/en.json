@@ -481,6 +481,28 @@
   "realtime_delivery_failed": "Delivery failed for order {}. Confirm the clothes came back",
   "realtime_adjustment_approved": "The customer approved the order adjustment",
   "realtime_adjustment_rejected": "The customer rejected the order adjustment",
-  "realtime_trip_requested": "{} requested the trip",
-  "realtime_trip_withdrawn": "The driver withdrew. The trip is open again"
+  "realtime_trip_withdrawn": "The driver withdrew. The trip is open again",
+  "driver_offers_title": "Driver offers",
+  "driver_offers_waiting": {
+    "zero": "No offers",
+    "one": "1 driver offer awaiting your choice",
+    "other": "{} driver offers awaiting your choice"
+  },
+  "driver_offers_count_chip": {
+    "zero": "No offers",
+    "one": "1 offer",
+    "other": "{} offers"
+  },
+  "driver_offers_tap_to_choose": "Tap to choose a driver",
+  "driver_offer_order_loading": "Loading order…",
+  "offer_distance_km": "{} km away",
+  "offer_distance_m": "{} m away",
+  "offer_eta": "Arrives in ~{} min",
+  "offer_closest": "Closest",
+  "trip_type_pickup": "Pickup",
+  "trip_type_dropoff": "Delivery",
+  "vehicle_car": "Car",
+  "vehicle_motorcycle": "Motorcycle",
+  "vehicle_scooter": "Scooter",
+  "vehicle_van": "Van"
 }

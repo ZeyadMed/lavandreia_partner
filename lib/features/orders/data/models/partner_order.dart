@@ -371,6 +371,17 @@ class PartnerOrder {
     return null;
   }
 
+  /// الرحلة اللي الدليفرية بيطلبوها دلوقتي ولسه المغسلة مااختارتش حد
+  /// الاستلام وهو AwaitingPickup والتسليم وهو Ready
+  DeliveryTrip? get tripAwaitingDriver {
+    final trip = switch (status) {
+      PartnerOrderStatus.awaitingPickup => pickupTrip,
+      PartnerOrderStatus.ready => dropoffTrip,
+      _ => null,
+    };
+    return trip == null || trip.hasDriver ? null : trip;
+  }
+
   /// بينسخ الطلب بحالة أو رحلات جديدة، والباقي بيفضل زي ما هو
   PartnerOrder copyWith({
     PartnerOrderStatus? status,

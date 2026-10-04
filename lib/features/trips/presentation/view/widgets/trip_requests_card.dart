@@ -14,7 +14,7 @@ import 'package:lavanderia_partner/features/orders/presentation/view/widgets/ord
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
-import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_tile.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_offer_tile.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 
 /// كارت الدليفرية اللي طلبوا الرحلة، المغسلة بتوافق على واحد منهم
@@ -99,15 +99,18 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
               );
             }
 
-            final requests = state.items.where((r) => !r.isRejected).toList();
+            // الأقرب الأول، والمرفوض والملغي مش بيظهروا
+            final requests =
+                state.items
+                    .where((r) => !r.isRejected && !r.isCancelled)
+                    .toList()
+                  ..sort(TripRequest.compareByArrival);
             // لو فيه طلب اتوافق عليه بنعرضه هو بس من غير زراير
             final approved = requests.where((r) => r.isApproved).firstOrNull;
 
             if (approved != null) {
-              return DriverTile(
-                name: approved.driverName,
-                phone: approved.driverPhone,
-                vehicleType: approved.vehicleType,
+              return DriverOfferTile(
+                request: approved,
                 trailing: const _ApprovedChip(),
               );
             }
@@ -125,23 +128,20 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
               bloc: _actionCubit,
               builder: (context, actionState) => Column(
                 children: [
-                  for (final request in requests)
+                  for (final (index, request) in requests.indexed)
                     Padding(
                       padding: EdgeInsets.only(bottom: 12.h),
-                      child: DriverTile(
-                        name: request.driverName,
-                        phone: request.driverPhone,
-                        vehicleType: request.vehicleType,
-                        trailing: _RequestButtons(
-                          loadingAction:
-                              actionState.isLoading &&
-                                  _actionCubit.pendingRequestId == request.id
-                              ? _actionCubit.pendingAction
-                              : null,
-                          isBusy: actionState.isLoading,
-                          onApprove: () => _actionCubit.approve(request),
-                          onReject: () => _actionCubit.reject(request),
-                        ),
+                      child: DriverOfferTile(
+                        request: request,
+                        isClosest: index == 0 && requests.length > 1,
+                        loadingAction:
+                            actionState.isLoading &&
+                                _actionCubit.pendingRequestId == request.id
+                            ? _actionCubit.pendingAction
+                            : null,
+                        isBusy: actionState.isLoading,
+                        onApprove: () => _actionCubit.approve(request),
+                        onReject: () => _actionCubit.reject(request),
                       ),
                     ),
                 ],
@@ -150,88 +150,6 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
           },
         ),
       ),
-    );
-  }
-}
-
-/// زرار القبول الأزرق وجنبه أيقونة الرفض
-class _RequestButtons extends StatelessWidget {
-  final TripRequestAction? loadingAction;
-  final bool isBusy;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
-
-  const _RequestButtons({
-    required this.loadingAction,
-    required this.isBusy,
-    required this.onApprove,
-    required this.onReject,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: isBusy ? null : onApprove,
-          child: Container(
-            height: 34.h,
-            padding: EdgeInsets.symmetric(horizontal: 14.w),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor,
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: loadingAction == TripRequestAction.approve
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.whiteColor,
-                    ),
-                  )
-                : LocalizedLabel(
-                    text: 'approve',
-                    style: TextStyles.boldStyle(
-                      13,
-                      color: AppColors.whiteColor,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-          ),
-        ),
-        Gap(6.w),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: isBusy ? null : onReject,
-          child: Container(
-            width: 34.h,
-            height: 34.h,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.redColor2.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: loadingAction == TripRequestAction.reject
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.redColor2,
-                    ),
-                  )
-                : Icon(
-                    Icons.close_rounded,
-                    size: 18.sp,
-                    color: AppColors.redColor2,
-                  ),
-          ),
-        ),
-      ],
     );
   }
 }

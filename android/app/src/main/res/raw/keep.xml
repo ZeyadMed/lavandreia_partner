@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- صوت قناة التنبيهات مش متقري من الكود، فالـ resource shrinking ممكن يشيله -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/driver_offer" />

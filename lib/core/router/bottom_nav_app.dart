@@ -14,6 +14,8 @@ import 'package:lavanderia_partner/features/home/presentation/view/home_screen.d
 import 'package:lavanderia_partner/features/orders/presentation/view/orders_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/profile_screen.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/services_screen.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_offers_sheet.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view_model/driver_offers_cubit.dart';
 
 class BottomNavApp extends StatefulWidget {
   const BottomNavApp({super.key});
@@ -55,6 +57,8 @@ class _BottomNavAppState extends State<BottomNavApp> {
     );
     // كل المسارات بعد اللوجين بتوصل هنا، والاتصال بيتقفل مع تسجيل الخروج
     RealtimeService.connect();
+    // العروض اللي وصلت والأبلكيشن مقفول، بتظهر في الشريط اللي تحت
+    DriverOffersCubit.instance.sync();
   }
 
   @override
@@ -161,6 +165,13 @@ class _BottomNavAppState extends State<BottomNavApp> {
               left: 0,
               right: 0,
               child: _RealtimeStatusBar(),
+            ),
+            // عروض الدليفرية اللي لسه المغسلة مااختارتش منها
+            Positioned(
+              left: 16.w,
+              right: 16.w,
+              bottom: 12.h,
+              child: const DriverOffersStrip(),
             ),
           ],
         ),

@@ -1,3 +1,5 @@
+import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
+
 /// طلب دليفري واحد على رحلة، المغسلة بتختار واحد منهم والباقي بيترفض
 class TripRequest {
   final int id;
@@ -60,6 +62,35 @@ class TripRequest {
   bool get isRejected => status.toLowerCase() == 'rejected';
 
   bool get isCancelled => status.toLowerCase() == 'cancelled';
+
+  /// لسه مستني المغسلة ترد، والحالة الفاضية كمان لو الحدث جه من غيرها
+  bool get isOpen => !isApproved && !isRejected && !isCancelled;
+
+  VehicleKind get vehicleKind => VehicleKind.fromApi(vehicleType);
+
+  /// الوقت المتوقع لوصوله المغسلة بالدقايق من المسافة وسرعة مركبته
+  /// + دقيقتين لحد ما يتحرك، و null لو المسافة مش معروفة
+  int? get etaMinutes {
+    final distance = distanceKm;
+    if (distance == null || distance < 0) return null;
+    final minutes = (distance / vehicleKind.speedKmh * 60).ceil() + 2;
+    return minutes < 1 ? 1 : minutes;
+  }
+
+  /// الأقرب الأول، واللي مسافته مش معروفة في الآخر بترتيب طلبه
+  static int compareByArrival(TripRequest a, TripRequest b) {
+    final etaA = a.etaMinutes;
+    final etaB = b.etaMinutes;
+    if (etaA != null && etaB != null && etaA != etaB) {
+      return etaA.compareTo(etaB);
+    }
+    if (etaA == null && etaB != null) return 1;
+    if (etaA != null && etaB == null) return -1;
+    final createdA = a.createdAt;
+    final createdB = b.createdAt;
+    if (createdA == null || createdB == null) return a.id.compareTo(b.id);
+    return createdA.compareTo(createdB);
+  }
 
   TripRequest copyWith({required String status}) => TripRequest(
     id: id,

@@ -17,6 +17,8 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final offersCount = order.tripAwaitingDriver?.pendingRequestsCount ?? 0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -51,7 +53,16 @@ class OrderCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                _StatusChip(status: order.status),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (offersCount > 0) ...[
+                      _OffersChip(count: offersCount),
+                      Gap(6.w),
+                    ],
+                    _StatusChip(status: order.status),
+                  ],
+                ),
               ],
             ),
             Gap(6.h),
@@ -135,6 +146,44 @@ class _StatusChip extends StatelessWidget {
           color: status.foregroundColor,
           weight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+/// عدد الدليفرية اللي طلبوا الرحلة ولسه المغسلة مااختارتش
+class _OffersChip extends StatelessWidget {
+  final int count;
+
+  const _OffersChip({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor,
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.delivery_dining_rounded,
+            size: 14.sp,
+            color: AppColors.whiteColor,
+          ),
+          Gap(4.w),
+          Label(
+            text: 'driver_offers_count_chip'.plural(count),
+            maxLines: 1,
+            style: TextStyles.boldStyle(
+              12,
+              color: AppColors.whiteColor,
+              weight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

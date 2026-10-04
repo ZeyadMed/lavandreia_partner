@@ -5,6 +5,7 @@ import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
@@ -103,7 +104,14 @@ class TripRequestActionCubit extends Cubit<BaseState<TripRequest>> {
           failure: failure,
         ),
       ),
-      (_) => emit(state.copyWith(status: Status.success, data: updated)),
+      (_) {
+        emit(state.copyWith(status: Status.success, data: updated));
+        // عشان شيت العروض وكارت تفاصيل الطلب يتحدثوا مع بعض أياً كان مين رد
+        RealtimeEvents.notifyTripRequest(updated);
+        if (action == TripRequestAction.reject) {
+          OrdersCubit.notifyTripRequestCountChanged(tripId, -1);
+        }
+      },
     );
   }
 }

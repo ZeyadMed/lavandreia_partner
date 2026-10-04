@@ -8,6 +8,7 @@ import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/helpers/logger.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
 import 'package:lavanderia_partner/core/http/token_refresh_service.dart';
+import 'package:lavanderia_partner/core/realtime/driver_offer_alert.dart';
 import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
@@ -18,6 +19,8 @@ import 'package:lavanderia_partner/features/orders/presentation/view/widgets/new
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_offers_sheet.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view_model/driver_offers_cubit.dart';
 import 'package:lavanderia_partner/main.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 
@@ -45,6 +48,9 @@ abstract final class RealtimeService {
   /// طلبات جديدة مستنية البوب أب بتاعها يظهر، واحد ورا التاني
   static final List<PartnerOrder> _pendingNewOrders = [];
   static bool _isShowingNewOrder = false;
+
+  /// عرض دليفري وصل والبوب أب بتاع طلب جديد ظاهر، فبيستنى لحد ما يتقفل
+  static int? _pendingOfferTripId;
 
   /// آخر تنبيه أكشن ظهر لكل طلب، عشان نفس الحالة ماتنبهش مرتين
   static final Map<int, String> _lastActionPrompt = {};
@@ -74,6 +80,9 @@ abstract final class RealtimeService {
     _connectivity = null;
     _pendingNewOrders.clear();
     _lastActionPrompt.clear();
+    _pendingOfferTripId = null;
+    DriverOffersCubit.instance.clear();
+    DriverOfferAlert.stop();
 
     final hub = _hub;
     _hub = null;
@@ -86,8 +95,21 @@ abstract final class RealtimeService {
   }
 
   /// الأحداث اللي فاتت وإحنا مش متصلين مش بتتبعت تاني
-  /// فبنجيب الليستات والطلب المفتوح من السيرفر
-  static void resync() => OrdersCubit.notifyServerChanged(null);
+  /// فبنجيب الليستات والطلب المفتوح وعروض الدليفرية من السيرفر
+  static void resync() {
+    OrdersCubit.notifyServerChanged(null);
+    DriverOffersCubit.instance.sync();
+  }
+
+  /// عرض دليفري جديد على رحلة، من الـ realtime أو من إشعار والاتصال واقع
+  /// لو بوب أب طلب جديد ظاهر، الشيت بيستنى لحد ما يتقفل
+  static void announceTripOffer(int tripId) {
+    if (_isShowingNewOrder) {
+      _pendingOfferTripId = tripId;
+      return;
+    }
+    DriverOffersSheet.announce(tripId);
+  }
 
   static HubConnection _build() {
     final hub = HubConnectionBuilder()
@@ -238,7 +260,13 @@ abstract final class RealtimeService {
     HapticFeedback.heavyImpact();
     await showNewOrderDialog(context, _pendingNewOrders.removeAt(0));
     _isShowingNewOrder = false;
-    _showNextNewOrder();
+    if (_pendingNewOrders.isNotEmpty) {
+      _showNextNewOrder();
+      return;
+    }
+    final offerTripId = _pendingOfferTripId;
+    _pendingOfferTripId = null;
+    if (offerTripId != null) announceTripOffer(offerTripId);
   }
 
   static void _onOrderUpdated(Map<String, dynamic> json) {
@@ -300,15 +328,15 @@ abstract final class RealtimeService {
     );
   }
 
+  /// العرض بيتضاف في [DriverOffersCubit] من [RealtimeEvents] قبل الشيت
   static void _onTripRequested(Map<String, dynamic> json) {
     final request = TripRequest.fromJson(json);
     RealtimeEvents.notifyTripRequest(request);
     OrdersCubit.notifyTripRequestCountChanged(request.deliveryTripId, 1);
     RealtimeEvents.hasUnreadNotifications.value = true;
-    _showBanner(
-      'realtime_trip_requested'.tr(args: [request.driverName]),
-      icon: Icons.delivery_dining_outlined,
-    );
+    if (request.deliveryTripId == 0) return;
+    // الـ stream بيوصّل في microtask، فبنستنى العرض يتضاف في الكيوبت الأول
+    Future(() => announceTripOffer(request.deliveryTripId));
   }
 
   /// لحظي بس: مش بيتحفظ كإشعار ومفيش push

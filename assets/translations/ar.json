@@ -484,6 +484,34 @@
   "realtime_delivery_failed": "فشل توصيل الطلب {}، أكّد رجوع الهدوم للمغسلة",
   "realtime_adjustment_approved": "العميل وافق على تعديل الطلب",
   "realtime_adjustment_rejected": "العميل رفض تعديل الطلب",
-  "realtime_trip_requested": "{} طلب الرحلة",
-  "realtime_trip_withdrawn": "الدليفري انسحب والرحلة اتفتحت تاني"
+  "realtime_trip_withdrawn": "الدليفري انسحب والرحلة اتفتحت تاني",
+  "driver_offers_title": "عروض المندوبين",
+  "driver_offers_waiting": {
+    "zero": "لا توجد عروض",
+    "one": "عرض مندوب بانتظار اختيارك",
+    "two": "عرضان بانتظار اختيارك",
+    "few": "{} عروض بانتظار اختيارك",
+    "many": "{} عرضًا بانتظار اختيارك",
+    "other": "{} عرض بانتظار اختيارك"
+  },
+  "driver_offers_count_chip": {
+    "zero": "لا عروض",
+    "one": "عرض واحد",
+    "two": "عرضان",
+    "few": "{} عروض",
+    "many": "{} عرضًا",
+    "other": "{} عرض"
+  },
+  "driver_offers_tap_to_choose": "اضغط لاختيار المندوب",
+  "driver_offer_order_loading": "جارٍ تحميل الطلب…",
+  "offer_distance_km": "{} كم منك",
+  "offer_distance_m": "{} م منك",
+  "offer_eta": "يصلك خلال ~{} د",
+  "offer_closest": "الأقرب",
+  "trip_type_pickup": "استلام",
+  "trip_type_dropoff": "توصيل",
+  "vehicle_car": "سيارة",
+  "vehicle_motorcycle": "دراجة نارية",
+  "vehicle_scooter": "سكوتر",
+  "vehicle_van": "فان"
 }
