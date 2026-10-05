@@ -1,21 +1,8 @@
 name: lavanderia_partner
 description: "A new Flutter project."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-# The following defines the version and build number for your application.
-# A version number is three numbers separated by dots, like 1.2.43
-# followed by an optional build number separated by a +.
-# Both the version and the builder number may be overridden in flutter
-# build by specifying --build-name and --build-number, respectively.
-# In Android, build-name is used as versionName while build-number used as versionCode.
-# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
-# Read more about iOS versioning at
-# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
+publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -99,19 +86,26 @@ flutter:
   uses-material-design: true
 
   fonts:
-  - family: SF Arabic
+  # الديزاين: Regular 400 نصوص، Medium 500 عناصر مهمة، SemiBold 600 عناوين، Bold 700 إبراز
+  - family: Cairo
     fonts:
-      - asset: assets/fonts/SFArabic-Regular.ttf
+      # ميتاداتا الملف usWeightClass 250، وفلاتر بيقبل مضاعفات 100 بس
+      - asset: assets/fonts/Cairo-ExtraLight.ttf
+        weight: 200
+      - asset: assets/fonts/Cairo-Light.ttf
+        weight: 300
+      - asset: assets/fonts/Cairo-Regular.ttf
         weight: 400
-      # الملف مسمّى SemiBold لكن ميتاداتا الخط Bold / usWeightClass 711
-      - asset: assets/fonts/SF-Arabic-SemiBold.ttf
+      - asset: assets/fonts/Cairo-Medium.ttf
+        weight: 500
+      - asset: assets/fonts/Cairo-SemiBold.ttf
+        weight: 600
+      - asset: assets/fonts/Cairo-Bold.ttf
         weight: 700
-      - asset: assets/fonts/sf-arabic-black.ttf
+      - asset: assets/fonts/Cairo-ExtraBold.ttf
+        weight: 800
+      - asset: assets/fonts/Cairo-Black.ttf
         weight: 900
-  - family: SF Arabic Rounded
-    fonts:
-      - asset: assets/fonts/SFArabicRounded-Regular.ttf
-        weight: 400
 
         
 

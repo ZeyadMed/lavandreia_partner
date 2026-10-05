@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 abstract interface class AppTextTheme {
   static const TextStyle _baseStyle = TextStyle(
-    fontFamily: 'Alexandria',
+    fontFamily: 'Cairo',
     // letterSpacing: 0.5,
     color: Color.fromRGBO(0, 0, 0, 1)
   );
