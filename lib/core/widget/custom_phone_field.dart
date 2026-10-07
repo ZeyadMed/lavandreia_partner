@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl_phone_field/countries.dart';
 import 'package:intl_phone_field/country_picker_dialog.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:intl_phone_field/phone_number.dart';
@@ -15,15 +16,16 @@ class CustomPhoneField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextEditingController? controller;
 
-  /// كود الدولة اللي الحقل بيفتح بيه، ليبيا هي الافتراضي
-  final String initialCountryCode;
+  /// ليبيا هي الدولة الوحيدة المسموح بيها
+  static final List<Country> _allowedCountries = countries
+      .where((country) => country.code == 'LY')
+      .toList();
 
   const CustomPhoneField({
     super.key,
     this.onChanged,
     this.validator,
     this.controller,
-    this.initialCountryCode = 'LY',
   });
 
   @override
@@ -32,7 +34,9 @@ class CustomPhoneField extends StatelessWidget {
       textDirection: ui.TextDirection.ltr,
       child: IntlPhoneField(
         controller: controller,
-        initialCountryCode: initialCountryCode,
+        initialCountryCode: 'LY',
+        countries: _allowedCountries,
+        showDropdownIcon: false,
         validator: validator == null
             ? null
             : (phone) => validator!(phone?.number),
@@ -56,7 +60,7 @@ class CustomPhoneField extends StatelessWidget {
             horizontal: 20.w,
           ),
           hintText: "XXXXXXXXXXX",
-          fillColor: AppColors.secondaryColor,
+          fillColor: AppColors.whiteColor.withValues(alpha: 0.9),
           filled: true,
           hintStyle: TextStyles.greyColor2Regular14.copyWith(
             // color: const Color(0xff8b7454),
