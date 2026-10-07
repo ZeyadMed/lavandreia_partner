@@ -59,6 +59,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     result.fold(
       (failure) {
+        // 409: الرقم مش مفعل والسيرفر بعت كود، فبنكمل التفعيل بنفس الرقم
+        if (failure is VerifyOTPFailure) {
+          context.showErrorMessage(failure.message);
+          context.push(AppRouter.verifyOtp, extra: completePhone);
+          return;
+        }
         // الـ ApiConsumer بيعرض أخطاء الاتصال بنفسه، فبنعرض رسالة السيرفر بس
         if (failure is ServerFailure ||
             failure is UnknownFailure ||

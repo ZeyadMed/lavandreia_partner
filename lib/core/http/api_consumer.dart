@@ -506,10 +506,15 @@ final class BaseApiConsumer implements ApiConsumer {
                 statusCode: error.response?.statusCode,
               );
             }
-            // Handle OTP failure for 409 status code
+            // 409 معناه إن رقم الهاتف مش مفعل والسيرفر بعت كود تحقق جديد،
+            // فاللوجين بيوجّه لصفحة الـ OTP برسالة السيرفر
             if (error.response?.statusCode == 409) {
               loggerWarn('VERIFYERROR');
-              return VerifyOTPFailure(message: 'خطأ في التحقق من الكود');
+              return VerifyOTPFailure(
+                message:
+                    decoded['message'] as String? ?? 'خطأ في التحقق من الكود',
+                statusCode: error.response?.statusCode,
+              );
             }
             if (decoded.containsKey('message')) {
               String message = decoded['message'];

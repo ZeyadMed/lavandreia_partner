@@ -10,6 +10,7 @@ import 'package:lavanderia_partner/core/http/api_consumer.dart';
 import 'package:lavanderia_partner/core/http/auth_interceptor.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
 import 'package:lavanderia_partner/core/http/token_refresh_service.dart';
+import 'package:lavanderia_partner/features/auth/forget_password/data/forget_password_data_source.dart';
 import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
@@ -94,6 +95,10 @@ class SharedServiceLocator {
 
     getIt.registerLazySingleton<RegisterDataSource>(
       () => RegisterDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<ForgetPasswordDataSource>(
+      () => ForgetPasswordDataSource(getIt<GenericDataSource>()),
     );
 
     getIt.registerLazySingleton<LaundryServicesDataSource>(

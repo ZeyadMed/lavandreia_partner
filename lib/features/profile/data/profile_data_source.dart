@@ -1,3 +1,4 @@
+import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/helpers/generic_data_source.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
@@ -25,5 +26,14 @@ class ProfileDataSource {
       endpoint: Endpoints.laundryProfile,
       data: profile.toFormData(),
     );
+  }
+
+  /// بيحذف الحساب نهائياً، ولو نجح بيمسح التوكنز عشان الجلسة تخلص معاه
+  Future<Either<Failure, void>> deleteAccount() async {
+    final result = await _genericDataSource.deleteData<Null>(
+      endpoint: Endpoints.deleteAccount,
+    );
+    if (result.isSuccess) await CacheManager.clearTokens();
+    return result;
   }
 }

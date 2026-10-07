@@ -19,11 +19,11 @@ import 'package:lavanderia_partner/core/widget/custom_button.dart';
 import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 
 class OtpScreen extends StatefulWidget {
-  /// رقم المغسلة اللي اتسجل، موجود في flow التسجيل بس
-  /// لو null يبقى جايين من نسيت كلمة المرور
-  final String? phoneNumber;
+  /// رقم المغسلة اللي محتاج يتفعل، جاي من التسجيل
+  /// أو من اللوجين لما السيرفر يرجّع 409 (الرقم مش مفعل)
+  final String phoneNumber;
 
-  const OtpScreen({super.key, this.phoneNumber});
+  const OtpScreen({super.key, required this.phoneNumber});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -67,13 +67,6 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _verify() async {
-    final phoneNumber = widget.phoneNumber;
-    // flow نسيت كلمة المرور لسه مش مربوط، فبيكمل زي ما كان
-    if (phoneNumber == null) {
-      context.go(AppRouter.changePassword);
-      return;
-    }
-
     final code = _pinController.text.trim();
     if (code.length < 5) {
       context.showErrorMessage('otp_incomplete'.tr());
@@ -84,7 +77,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _isVerifying = true);
 
     final result = await getIt<RegisterDataSource>().verifyPhone(
-      phoneNumber: phoneNumber,
+      phoneNumber: widget.phoneNumber,
       code: code,
     );
     if (!mounted) return;

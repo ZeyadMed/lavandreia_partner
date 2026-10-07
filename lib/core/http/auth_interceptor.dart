@@ -37,7 +37,7 @@ class AuthInterceptor extends Interceptor {
     Endpoints.verifyPhone,
     Endpoints.cities,
     Endpoints.forgetPassword,
-    Endpoints.resetPasssword,
+    Endpoints.resetPassword,
     Endpoints.forgetResendOtp,
     Endpoints.forgetVerifyOtp,
   ];

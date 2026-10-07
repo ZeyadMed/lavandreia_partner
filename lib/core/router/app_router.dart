@@ -81,9 +81,9 @@ abstract class AppRouter {
       ),
       GoRoute(
         path: verifyOtp,
-        // الرقم بييجي من التسجيل بس، ومن نسيت كلمة المرور بيبقى null
+        // الرقم بييجي من التسجيل أو من اللوجين لما الرقم يكون مش مفعل (409)
         builder: (context, state) =>
-            OtpScreen(phoneNumber: state.extra as String?),
+            OtpScreen(phoneNumber: state.extra as String),
       ),
       GoRoute(
         path: forgetPassword,
@@ -91,7 +91,9 @@ abstract class AppRouter {
       ),
       GoRoute(
         path: changePassword,
-        builder: (context, state) => const ChangePasswordScreen(),
+        // الرقم اللي اتبعتله كود نسيت كلمة المرور
+        builder: (context, state) =>
+            ChangePasswordScreen(phoneNumber: state.extra as String),
       ),
       GoRoute(
         path: setupServices,

@@ -8,6 +8,8 @@ import 'package:lavanderia_partner/core/realtime/realtime_service.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
+import 'package:lavanderia_partner/core/http/either.dart';
+import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
@@ -22,6 +24,7 @@ import 'package:lavanderia_partner/features/profile/presentation/view/reviews_sc
 import 'package:lavanderia_partner/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/support_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/working_hours_screen.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view/widgets/delete_account_dialog.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/logout_dialog.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_header.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/widgets/profile_widgets.dart';
@@ -80,6 +83,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     context.go(AppRouter.login);
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDeleteAccountDialog(context);
+    if (confirmed != true || !mounted) return;
+
+    context.showLoadingDialog(message: 'deleting_account');
+    final result = await getIt<ProfileDataSource>().deleteAccount();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+
+    if (result.isError) {
+      final failure = result.throwError();
+      // الـ ApiConsumer بيعرض أخطاء الاتصال بنفسه، فبنعرض رسالة السيرفر بس
+      if (failure is ServerFailure ||
+          failure is UnknownFailure ||
+          failure is ParsingFailure) {
+        context.showErrorMessage(failure.message);
+      }
+      return;
+    }
+
+    // الحساب اتحذف والتوكنز اتمسحت، فبنقفل الـ realtime ونرجع للوجين
+    await RealtimeService.disconnect();
+    if (!mounted) return;
+    context.showSuccessMessage('account_deleted'.tr());
+    context.go(AppRouter.login);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +138,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildMenuCard(profile),
                         Gap(16.h),
                         _LogoutButton(onTap: _logout),
+                        Gap(12.h),
+                        _DeleteAccountButton(onTap: _deleteAccount),
                       ],
                     ),
                   ),
@@ -237,6 +269,43 @@ class _LogoutButton extends StatelessWidget {
             ),
             Gap(10.w),
             Icon(Icons.logout_rounded, size: 19.sp, color: AppColors.redColor2),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// لينك حذف الحساب تحت زرار الخروج، أخف منه عشان مايتداسش بالغلط
+class _DeleteAccountButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _DeleteAccountButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.person_remove_outlined,
+              size: 18.sp,
+              color: AppColors.redColor2,
+            ),
+            Gap(8.w),
+            LocalizedLabel(
+              text: 'delete_account',
+              style: TextStyles.boldStyle(
+                14,
+                color: AppColors.redColor2,
+                weight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),

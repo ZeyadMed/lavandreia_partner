@@ -16,8 +16,13 @@ abstract interface class Endpoints {
 
   /// بتستقبل { phoneNumber, password, rememberMe, deviceToken }
   static const String login = 'api/auth/laundry/login';
-  static const String forgetPassword = 'forgot/password';
-  static const String resetPasssword = 'forgot/reset-password';
+
+  /// بيبعت كود لرقم الهاتف، بتستقبل { phoneNumber, accountType }
+  static const String forgetPassword = 'api/auth/forgot-password';
+
+  /// كلمة المرور الجديدة بالكود اللي وصل من [forgetPassword]
+  /// بتستقبل { phoneNumber, accountType, code, newPassword }
+  static const String resetPassword = 'api/auth/reset-password';
   static const String confirmPassword = '';
   static const String resentOtp = 'resend-otp';
   static const String forgetResendOtp = 'forgot/resend-otp';
@@ -27,6 +32,9 @@ abstract interface class Endpoints {
   /// بناخد منها accessToken جديد لما القديم يقع بـ 401.
   /// بتستقبل { "refreshToken": "..." } وبترجع الاتنين جداد.
   static const String refreshToken = '/api/auth/refresh-token';
+
+  /// حذف الحساب نهائياً، DELETE من غير body
+  static const String deleteAccount = '/api/laundry/account';
 
   // ****************************** Laundry ********************************
   /// بيانات المغسلة: الاسم والصورة والعنوان وغيرهم
