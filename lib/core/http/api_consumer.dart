@@ -486,6 +486,15 @@ final class BaseApiConsumer implements ApiConsumer {
                 statusCode: error.response?.statusCode,
               );
             }
+            // الـ 404 اللي جاي برسالة من السيرفر (زي "مفيش دليفري بالرقم ده")
+            // بيرجع زي الـ 400 والشاشة هي اللي بتعرضها
+            if (error.response?.statusCode == 404 &&
+                decoded['message'] is String) {
+              return ServerFailure(
+                message: decoded['message'] as String,
+                statusCode: error.response?.statusCode,
+              );
+            }
             if (error.response?.statusCode == 404) {
               navigatorKey.currentContext!.showErrorMessage('404');
               return ServerFailure(

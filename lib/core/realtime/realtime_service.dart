@@ -11,7 +11,9 @@ import 'package:lavanderia_partner/core/http/token_refresh_service.dart';
 import 'package:lavanderia_partner/core/realtime/driver_offer_alert.dart';
 import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
+import 'package:lavanderia_partner/core/session/current_laundry.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/accredit_trip_driver_sheet.dart';
 import 'package:lavanderia_partner/features/orders/data/models/order_adjustment_result.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/order_details_screen.dart';
@@ -82,6 +84,7 @@ abstract final class RealtimeService {
     _lastActionPrompt.clear();
     _pendingOfferTripId = null;
     DriverOffersCubit.instance.clear();
+    CurrentLaundry.clear();
     DriverOfferAlert.stop();
 
     final hub = _hub;
@@ -277,6 +280,7 @@ abstract final class RealtimeService {
   }
 
   /// الحالات اللي الدليفري بيغيّرها والمغسلة لازم تعمل حاجة بعدها
+  /// لو صفحة الطلب مفتوحة هي اللي بتعرض الأكشن، زي سؤال اعتماد الدليفري
   static void _promptActionIfNeeded(PartnerOrder order) {
     final messageKey = switch (order.status) {
       PartnerOrderStatus.awaitingPickup
@@ -287,6 +291,11 @@ abstract final class RealtimeService {
         'realtime_dropoff_driver_arrived',
       PartnerOrderStatus.pickupFailed => 'realtime_pickup_failed',
       PartnerOrderStatus.deliveryFailed => 'realtime_delivery_failed',
+      // رحلة التسليم خلصت، والمغسلة تقدر تعتمد الدليفري من تفاصيل الطلب
+      PartnerOrderStatus.delivered
+          when order.dropoffTrip != null &&
+              canAccreditTripDriver(order.dropoffTrip!) =>
+        'realtime_delivered_accredit_driver',
       _ => null,
     };
     if (messageKey == null) {

@@ -2,6 +2,8 @@
 /// الاستلام من بيت العميل للمغسلة، والتسليم من المغسلة لبيت العميل
 library;
 
+import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
+
 /// نفس enum DeliveryTripType في الباك إند
 enum DeliveryTripType {
   pickup(apiName: 'Pickup'),
@@ -82,6 +84,10 @@ class DeliveryTrip {
   /// الرحلة خلصت ومبقاش عليها أي أكشن
   final bool isClosed;
 
+  /// المغاسل اللي معتمدة الدليفري المتعيّن، فاضية لو مفيش دليفري لسه
+  /// أو محدش معتمده
+  final List<AccreditingLaundry> driverAccreditedBy;
+
   const DeliveryTrip({
     required this.id,
     required this.type,
@@ -99,6 +105,7 @@ class DeliveryTrip {
     this.isConfirmed = false,
     this.isHandedOver = false,
     this.isClosed = false,
+    this.driverAccreditedBy = const [],
   });
 
   /// الدليفري بيتعيّن على الرحلة بس لما المغسلة توافق على طلبه
@@ -112,7 +119,7 @@ class DeliveryTrip {
   /// { "id", "orderId", "type", "driverId", "driverName", "driverPhoneNumber",
   /// "fee", "isAwaitingConfirmation", "awaitingConfirmationBy", "isConfirmed",
   /// "isHandedOver", "isClosed", "photoUrls", "failureReason", "failureNote",
-  /// "pendingRequestsCount", .. }
+  /// "pendingRequestsCount", "driverAccreditedBy", .. }
   factory DeliveryTrip.fromJson(
     Map<String, dynamic> json, {
     required DeliveryTripType type,
@@ -138,6 +145,9 @@ class DeliveryTrip {
       isConfirmed: json['isConfirmed'] as bool? ?? false,
       isHandedOver: json['isHandedOver'] as bool? ?? false,
       isClosed: json['isClosed'] as bool? ?? false,
+      driverAccreditedBy: AccreditingLaundry.listFromJson(
+        json['driverAccreditedBy'],
+      ),
     );
   }
 
@@ -159,5 +169,6 @@ class DeliveryTrip {
     isConfirmed: isConfirmed,
     isHandedOver: isHandedOver,
     isClosed: isClosed,
+    driverAccreditedBy: driverAccreditedBy,
   );
 }

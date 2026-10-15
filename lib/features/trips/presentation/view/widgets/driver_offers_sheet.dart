@@ -11,6 +11,7 @@ import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/realtime/driver_offer_alert.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
+import 'package:lavanderia_partner/core/session/current_laundry.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
@@ -251,6 +252,10 @@ class _TripOffersSectionState extends State<_TripOffersSection> {
     final offers = widget.offers;
     final order = offers.order;
     final type = offers.type;
+    // المعتمدين لدى المغسلة فوق، و "الأقرب" بيتحسب لوحده عشان الترتيب ده
+    final requests = [...offers.requests]
+      ..sort(TripRequest.compareForLaundry(CurrentLaundry.id));
+    final closestId = TripRequest.closestOf(requests)?.id;
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -299,15 +304,15 @@ class _TripOffersSectionState extends State<_TripOffersSection> {
             listener: _onActionStateChanged,
             builder: (context, actionState) => Column(
               children: [
-                for (final (index, request) in offers.requests.indexed)
+                for (final (index, request) in requests.indexed)
                   Padding(
                     padding: EdgeInsets.only(
-                      bottom: index == offers.requests.length - 1 ? 0 : 10.h,
+                      bottom: index == requests.length - 1 ? 0 : 10.h,
                     ),
                     child: DriverOfferTile(
                       key: ValueKey(request.id),
                       request: request,
-                      isClosest: index == 0 && offers.requests.length > 1,
+                      isClosest: request.id == closestId,
                       loadingAction:
                           actionState.isLoading &&
                               _actionCubit.pendingRequestId == request.id

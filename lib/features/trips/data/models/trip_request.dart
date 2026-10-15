@@ -1,3 +1,4 @@
+import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
 import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
 
 /// طلب دليفري واحد على رحلة، المغسلة بتختار واحد منهم والباقي بيترفض
@@ -21,6 +22,9 @@ class TripRequest {
 
   final DateTime? createdAt;
 
+  /// المغاسل اللي معتمدة الدليفري، فاضية لو محدش معتمده
+  final List<AccreditingLaundry> driverAccreditedBy;
+
   const TripRequest({
     required this.id,
     required this.driverName,
@@ -31,10 +35,11 @@ class TripRequest {
     this.distanceKm,
     this.status = '',
     this.createdAt,
+    this.driverAccreditedBy = const [],
   });
 
   /// { "id", "deliveryTripId", "driverId", "driverName", "driverPhoneNumber",
-  /// "distanceKm", "status", "createdAt", "vehicleType" }
+  /// "distanceKm", "status", "createdAt", "vehicleType", "driverAccreditedBy" }
   /// بيانات الدليفري ممكن تيجي جوه "driver" بدل ما تبقى في الطلب نفسه
   factory TripRequest.fromJson(Map<String, dynamic> json) {
     final driver = json['driver'] as Map<String, dynamic>? ?? const {};
@@ -52,6 +57,9 @@ class TripRequest {
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       status: '${json['status'] ?? ''}',
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
+      driverAccreditedBy: AccreditingLaundry.listFromJson(
+        json['driverAccreditedBy'],
+      ),
     );
   }
 
@@ -92,7 +100,28 @@ class TripRequest {
     return createdA.compareTo(createdB);
   }
 
-  TripRequest copyWith({required String status}) => TripRequest(
+  /// الأقرب في الوصول لما يبقى فيه أكتر من عرض، و null لو عرض واحد أو مفيش
+  static TripRequest? closestOf(List<TripRequest> requests) {
+    if (requests.length < 2) return null;
+    return requests.reduce(
+      (closest, request) =>
+          compareByArrival(request, closest) < 0 ? request : closest,
+    );
+  }
+
+  /// المعتمدين لدى [laundryId] الأول وبعدهم بترتيب [compareByArrival]
+  /// من غير [laundryId] بيبقى زي [compareByArrival] بالظبط
+  static Comparator<TripRequest> compareForLaundry(int? laundryId) => (a, b) {
+    final aAccredited = a.driverAccreditedBy.isAccreditedBy(laundryId);
+    final bAccredited = b.driverAccreditedBy.isAccreditedBy(laundryId);
+    if (aAccredited != bAccredited) return aAccredited ? -1 : 1;
+    return compareByArrival(a, b);
+  };
+
+  TripRequest copyWith({
+    String? status,
+    List<AccreditingLaundry>? driverAccreditedBy,
+  }) => TripRequest(
     id: id,
     deliveryTripId: deliveryTripId,
     driverId: driverId,
@@ -100,7 +129,8 @@ class TripRequest {
     driverPhone: driverPhone,
     vehicleType: vehicleType,
     distanceKm: distanceKm,
-    status: status,
+    status: status ?? this.status,
     createdAt: createdAt,
+    driverAccreditedBy: driverAccreditedBy ?? this.driverAccreditedBy,
   );
 }

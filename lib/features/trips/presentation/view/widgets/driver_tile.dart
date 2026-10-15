@@ -5,15 +5,20 @@ import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/driver_accreditation_badges.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// كارت الدليفري المتعيّن على الرحلة بعد ما المغسلة وافقت عليه
+/// وتحت اسمه المغاسل اللي معتمداه
 class AssignedDriverCard extends StatelessWidget {
   final DeliveryTrip trip;
 
-  const AssignedDriverCard({super.key, required this.trip});
+  /// بعد الاعتماد السريع، عشان صفحة الطلب تجيبه تاني بالاعتماد الجديد
+  final VoidCallback? onAccredited;
+
+  const AssignedDriverCard({super.key, required this.trip, this.onAccredited});
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +30,12 @@ class AssignedDriverCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DriverTile(name: trip.driverName, phone: trip.driverPhone),
+          Gap(10.h),
+          DriverAccreditationBadges(
+            laundries: trip.driverAccreditedBy,
+            driverPhone: trip.driverPhone,
+            onAccredited: onAccredited == null ? null : (_) => onAccredited!(),
+          ),
           // صور الهدوم وقت الاستلام من العميل، بترجع المغسلة ليها وهي بتطابق
           if (trip.photoUrls.isNotEmpty) ...[
             Gap(12.h),

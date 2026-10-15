@@ -97,6 +97,14 @@ abstract interface class Endpoints {
   static String rejectTripRequest(int tripId, int requestId) =>
       '${tripRequests(tripId)}/$requestId/reject';
 
+  /// الدليفرية المعتمدين عند المغسلة: GET بيجيبهم من الأحدث للأقدم
+  /// و POST بـ { phoneNumber } بيعتمد دليفري، والرقم بأي صيغة ليبية
+  static const String accreditedDrivers = 'api/laundry/accredited-drivers';
+
+  /// إلغاء اعتماد دليفري، DELETE من غير body
+  static String accreditedDriver(int driverId) =>
+      '$accreditedDrivers/$driverId';
+
   /// تأكيد تسليم الهدوم لدليفري التسليم، POST بـ { otpCode }
   static String confirmDropoffHandover(int tripId) =>
       'api/laundry/dropoff-trips/$tripId/confirm-handover';

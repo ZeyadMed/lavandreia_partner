@@ -3,6 +3,7 @@ import 'package:lavanderia_partner/core/helpers/generic_data_source.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/endpoints.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
+import 'package:lavanderia_partner/core/session/current_laundry.dart';
 import 'package:lavanderia_partner/features/profile/data/models/laundry_profile.dart';
 import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
 
@@ -13,11 +14,14 @@ class ProfileDataSource {
   ProfileDataSource(this._genericDataSource);
 
   /// الريسبونس: { "data": { "id", "name", "address", "imageUrl", ... } }
-  Future<Either<Failure, PartnerProfile>> getProfile() {
-    return _genericDataSource.fetchResult<PartnerProfile>(
+  /// وكل مرة بينجح بيحدّث [CurrentLaundry]
+  Future<Either<Failure, PartnerProfile>> getProfile() async {
+    final result = await _genericDataSource.fetchResult<PartnerProfile>(
       endpoint: Endpoints.laundryProfile,
       fromJson: PartnerProfile.fromJson,
     );
+    if (result.isSuccess) CurrentLaundry.profile.value = result.getOrThrow();
+    return result;
   }
 
   /// بيبعت البيانات كـ multipart عشان الصورة بتتبعت كملف

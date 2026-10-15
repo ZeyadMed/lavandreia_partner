@@ -371,6 +371,25 @@ class PartnerOrder {
     return null;
   }
 
+  /// الرحلات اللي خلصت بتسليم الهدوم وعليها دليفري: الاستلام بعد ما المغسلة
+  /// أكّدت إن الهدوم وصلتها، والتسليم بعد ما العميل استلم
+  /// المغسلة بتقدر تعتمد الدليفري بعدها، والفشل مش محسوب نهاية
+  List<DeliveryTrip> get finishedTrips {
+    final pickup = pickupTrip;
+    final dropoff = dropoffTrip;
+    return [
+      if (pickup != null &&
+          pickup.hasDriver &&
+          (pickup.isConfirmed ||
+              stage.index >= PartnerOrderStage.pickedUp.index))
+        pickup,
+      if (dropoff != null &&
+          dropoff.hasDriver &&
+          (dropoff.isConfirmed || status == PartnerOrderStatus.delivered))
+        dropoff,
+    ];
+  }
+
   /// الرحلة اللي الدليفرية بيطلبوها دلوقتي ولسه المغسلة مااختارتش حد
   /// الاستلام وهو AwaitingPickup والتسليم وهو Ready
   DeliveryTrip? get tripAwaitingDriver {

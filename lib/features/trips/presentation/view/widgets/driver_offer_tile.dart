@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/driver_accreditation_badges.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// كارت عرض دليفري واحد: الاسم وزرار الاتصال، وتحتهم نوع المركبة وبعده عن
-/// المغسلة والوقت المتوقع لوصوله، وتحت خالص زرار القبول والرفض
+/// المغسلة والوقت المتوقع لوصوله، وبعدهم المغاسل اللي معتمداه،
+/// وتحت خالص زرار القبول والرفض
 /// من غير [onApprove] (الدليفري اللي اتوافق عليه) بيظهر [trailing] بدل الزراير
 class DriverOfferTile extends StatelessWidget {
   final TripRequest request;
@@ -122,6 +126,12 @@ class DriverOfferTile extends StatelessWidget {
                 ),
             ],
           ),
+          Gap(8.h),
+          DriverAccreditationBadges(
+            laundries: request.driverAccreditedBy,
+            driverPhone: request.driverPhone,
+            onAccredited: _onAccredited,
+          ),
           if (onApprove != null && onReject != null) ...[
             Gap(12.h),
             Row(
@@ -158,6 +168,16 @@ class DriverOfferTile extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// بعد الاعتماد السريع بنبعت الطلب متحدّث على نفس قناة الـ realtime
+  /// عشان كارت تفاصيل الطلب وشيت العروض يتحدثوا مع بعض من غير ما يجيبوا تاني
+  void _onAccredited(AccreditingLaundry laundry) {
+    RealtimeEvents.notifyTripRequest(
+      request.copyWith(
+        driverAccreditedBy: [laundry, ...request.driverAccreditedBy],
       ),
     );
   }

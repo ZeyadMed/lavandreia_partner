@@ -8,6 +8,7 @@ import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
+import 'package:lavanderia_partner/core/session/current_laundry.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
@@ -99,12 +100,14 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
               );
             }
 
-            // الأقرب الأول، والمرفوض والملغي مش بيظهروا
+            // المعتمدين لدى المغسلة الأول وبعدهم الأقرب،
+            // والمرفوض والملغي مش بيظهروا
             final requests =
                 state.items
                     .where((r) => !r.isRejected && !r.isCancelled)
                     .toList()
-                  ..sort(TripRequest.compareByArrival);
+                  ..sort(TripRequest.compareForLaundry(CurrentLaundry.id));
+            final closestId = TripRequest.closestOf(requests)?.id;
             // لو فيه طلب اتوافق عليه بنعرضه هو بس من غير زراير
             final approved = requests.where((r) => r.isApproved).firstOrNull;
 
@@ -128,12 +131,12 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
               bloc: _actionCubit,
               builder: (context, actionState) => Column(
                 children: [
-                  for (final (index, request) in requests.indexed)
+                  for (final request in requests)
                     Padding(
                       padding: EdgeInsets.only(bottom: 12.h),
                       child: DriverOfferTile(
                         request: request,
-                        isClosest: index == 0 && requests.length > 1,
+                        isClosest: request.id == closestId,
                         loadingAction:
                             actionState.isLoading &&
                                 _actionCubit.pendingRequestId == request.id

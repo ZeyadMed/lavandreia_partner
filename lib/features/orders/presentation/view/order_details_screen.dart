@@ -11,6 +11,7 @@ import 'package:lavanderia_partner/core/router/bottom_nav_controller.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/accredit_trip_driver_sheet.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/order_adjustment_screen.dart';
@@ -22,6 +23,7 @@ import 'package:lavanderia_partner/features/orders/presentation/view_model/order
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_tile.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/finished_trips_drivers_card.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/trip_otp_sheet.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/trip_requests_card.dart';
 
@@ -69,6 +71,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     getIt<OrdersDataSource>(),
   );
 
+  /// الرحلات اللي كانت خلصت قبل ما الصفحة تتفتح أو اتسأل عنها،
+  /// عشان سؤال اعتماد الدليفري يظهر مرة واحدة في نهاية الرحلة بس
+  late final Set<int> _finishedTripIds = {
+    for (final trip in widget.order.finishedTrips) trip.id,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -107,6 +115,31 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       MaterialPageRoute(builder: (_) => OrderAdjustmentScreen(order: _order)),
     );
     if (sent == true) _detailsCubit.refresh();
+  }
+
+  /// كل نسخة جديدة من الطلب بنشوف فيها رحلة خلصت وهي فاتحة الصفحة:
+  /// المغسلة أكّدت كود الاستلام، أو العميل استلم والحالة بقت Delivered
+  void _onOrderChanged(BuildContext context, BaseState<PartnerOrder> state) {
+    final finished = state.data!.finishedTrips
+        .where((trip) => _finishedTripIds.add(trip.id))
+        .toList();
+    if (finished.isNotEmpty) _promptAccreditDriver(finished.last);
+  }
+
+  /// في نهاية الرحلة بنسأل المغسلة تعتمد الدليفري لو مش معتمد عندها
+  /// ولو فيه صفحة تانية فوق التفاصيل بنسيبها، والاعتماد بيفضل في كارت الدليفرية
+  Future<void> _promptAccreditDriver(DeliveryTrip trip) async {
+    if (!canAccreditTripDriver(trip)) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+
+    final accredited = await showAccreditTripDriverSheet(
+      context: context,
+      trip: trip,
+    );
+    if (accredited != true || !mounted) return;
+
+    context.showSuccessMessage('driver_accredited_success'.tr());
+    _detailsCubit.refresh();
   }
 
   /// القبول بيروح لطلباتي والرفض الليستات بتشيله لوحدها،
@@ -153,15 +186,30 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<OrderActionCubit, BaseState<PartnerOrder>>(
-      bloc: _actionCubit,
-      listenWhen: (previous, current) => previous.status != current.status,
-      listener: _onActionStateChanged,
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<OrderActionCubit, BaseState<PartnerOrder>>(
+          bloc: _actionCubit,
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: _onActionStateChanged,
+        ),
+        BlocListener<OrderDetailsCubit, BaseState<PartnerOrder>>(
+          bloc: _detailsCubit,
+          listenWhen: (previous, current) => previous.data != current.data,
+          listener: _onOrderChanged,
+        ),
+      ],
       child: BlocBuilder<OrderDetailsCubit, BaseState<PartnerOrder>>(
         bloc: _detailsCubit,
         builder: (context, detailsState) {
           final order = detailsState.data!;
+          final activeTrip = _activeTrip(order);
           final tripCard = _tripCard(order, detailsState.lastUpdated);
+          // الرحلة الحالية ليها كارتها، فالكارت ده للرحلات اللي خلصت بس
+          final finishedTrips = [
+            for (final trip in order.finishedTrips)
+              if (trip.id != activeTrip?.id) trip,
+          ];
 
           return Scaffold(
             backgroundColor: AppColors.semiWhiteColor3,
@@ -182,6 +230,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                           CustomerInfoCard(order: order),
                           Gap(14.h),
                           if (tripCard != null) ...[tripCard, Gap(14.h)],
+                          if (finishedTrips.isNotEmpty) ...[
+                            FinishedTripsDriversCard(
+                              trips: finishedTrips,
+                              onAccredited: _detailsCubit.refresh,
+                            ),
+                            Gap(14.h),
+                          ],
                           OrderItemsCard(order: order),
                           Gap(14.h),
                           OrderMetaCard(order: order),
@@ -239,24 +294,29 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
+  /// رحلة الاستلام أو التسليم اللي شغالة دلوقتي حسب الحالة، و null بينهم
+  DeliveryTrip? _activeTrip(PartnerOrder order) => switch (order.status) {
+    PartnerOrderStatus.awaitingPickup ||
+    PartnerOrderStatus.pickupFailed ||
+    PartnerOrderStatus.atLaundryPendingMatch ||
+    PartnerOrderStatus.adjustmentPendingApproval => order.pickupTrip,
+    PartnerOrderStatus.ready ||
+    PartnerOrderStatus.awaitingDropoffCollection ||
+    PartnerOrderStatus.outForDelivery ||
+    PartnerOrderStatus.deliveryFailed => order.dropoffTrip,
+    _ => null,
+  };
+
   /// كارت رحلة الاستلام أو التسليم حسب الحالة:
   /// الدليفري المتعيّن لو فيه، وإلا الدليفرية اللي طلبوا الرحلة
   /// وقت المطابقة كارت الاستلام بيفضل ظاهر عشان صور الهدوم اللي الدليفري رفعها
   /// [refreshedAt] جوه الـ key عشان الكارت يجيب الطلبات تاني مع كل تحديث
   Widget? _tripCard(PartnerOrder order, DateTime? refreshedAt) {
-    final trip = switch (order.status) {
-      PartnerOrderStatus.awaitingPickup ||
-      PartnerOrderStatus.pickupFailed ||
-      PartnerOrderStatus.atLaundryPendingMatch ||
-      PartnerOrderStatus.adjustmentPendingApproval => order.pickupTrip,
-      PartnerOrderStatus.ready ||
-      PartnerOrderStatus.awaitingDropoffCollection ||
-      PartnerOrderStatus.outForDelivery ||
-      PartnerOrderStatus.deliveryFailed => order.dropoffTrip,
-      _ => null,
-    };
+    final trip = _activeTrip(order);
     if (trip == null) return null;
-    if (trip.hasDriver) return AssignedDriverCard(trip: trip);
+    if (trip.hasDriver) {
+      return AssignedDriverCard(trip: trip, onAccredited: _detailsCubit.refresh);
+    }
     // طلبات الدليفرية بتتقبل بس والرحلة لسه مستنية دليفري
     final isWaitingDriver =
         order.status == PartnerOrderStatus.awaitingPickup ||

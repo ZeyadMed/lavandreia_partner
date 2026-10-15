@@ -14,6 +14,7 @@ import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/accredited_drivers_screen.dart';
 import 'package:lavanderia_partner/features/auth/login/data/login_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/models/laundry_profile.dart';
 import 'package:lavanderia_partner/features/profile/data/models/partner_profile.dart';
@@ -204,6 +205,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: Icons.notifications_none_rounded,
           labelKey: 'notifications',
           onTap: () => _open(const NotificationsScreen()),
+        ),
+        ProfileMenuTile(
+          icon: Icons.verified_user_outlined,
+          labelKey: 'accredited_drivers',
+          onTap: () => _open(const AccreditedDriversScreen()),
         ),
         ProfileMenuTile(
           icon: Icons.access_time,
