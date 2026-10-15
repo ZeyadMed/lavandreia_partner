@@ -24,10 +24,21 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>mailto</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>نحتاج الوصول للكاميرا لالتقاط صورة لمغسلتك</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>نحتاج الوصول لموقعك لتحديد مكان مغسلتك على الخريطة</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نحتاج الوصول لموقعك لتحديد مكان مغسلتك على الخريطة</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>نحتاج الوصول لصورك لاختيار صورة لمغسلتك</string>
 	<key>UIBackgroundModes</key>
