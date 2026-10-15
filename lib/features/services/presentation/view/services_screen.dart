@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
+import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
@@ -51,12 +52,23 @@ class _ServicesView extends StatefulWidget {
 }
 
 class _ServicesViewState extends State<_ServicesView> {
+  static const _typesBannerDismissedKey = 'item_types_banner_dismissed';
+
   /// الأسعار اللي اتعدّلت ولسه متبعتتش، بالـ serviceItemId
   final Map<int, double> _editedPrices = {};
 
   /// الأصناف المحددة للحذف بالـ serviceItemId
   final Set<int> _selectedIds = {};
   bool _isSelectionMode = false;
+
+  /// تنبيه تسعير الأنواع، بيختفي للأبد لما المغسلة تقفله
+  late bool _showTypesBanner =
+      CacheManager.sharedPreferences.getBool(_typesBannerDismissedKey) != true;
+
+  void _dismissTypesBanner() {
+    setState(() => _showTypesBanner = false);
+    CacheManager.sharedPreferences.setBool(_typesBannerDismissedKey, true);
+  }
 
   double _priceOf(MyServiceItem item) =>
       _editedPrices[item.serviceItemId] ?? item.price;
@@ -247,7 +259,9 @@ class _ServicesViewState extends State<_ServicesView> {
       return const ServicesSkeleton();
     }
 
-    final groups = _groupByService(state.items);
+    final groups = groupByService(state.items);
+    // الأصناف اللي بقى ليها أنواع أسعارها القديمة اتمسحت، فاللستة ممكن تكون ناقصة
+    final showBanner = _showTypesBanner && !_isSelectionMode;
     return RefreshIndicator(
       color: AppColors.primaryColor,
       onRefresh: cubit.fetchData,
@@ -255,12 +269,21 @@ class _ServicesViewState extends State<_ServicesView> {
           ? ListView(
               // لازم يبقى scrollable عشان السحب للتحديث يشتغل
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
               children: [
                 Gap(120.h),
                 LocalizedLabel(
                   text: 'no_my_services',
                   textAlign: TextAlign.center,
                   style: TextStyles.darkRegular14.copyWith(
+                    color: AppColors.greyColor3,
+                  ),
+                ),
+                Gap(6.h),
+                LocalizedLabel(
+                  text: 'price_item_types_hint',
+                  textAlign: TextAlign.center,
+                  style: TextStyles.darkRegular12.copyWith(
                     color: AppColors.greyColor3,
                   ),
                 ),
@@ -285,13 +308,21 @@ class _ServicesViewState extends State<_ServicesView> {
           : ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-              itemCount: groups.length,
-              itemBuilder: (context, index) => _buildGroup(groups[index]),
+              itemCount: groups.length + (showBanner ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (showBanner && index == 0) {
+                  return _ItemTypesBanner(
+                    onAdd: () => _addServices(state.items),
+                    onDismiss: _dismissTypesBanner,
+                  );
+                }
+                return _buildGroup(groups[index - (showBanner ? 1 : 0)]);
+              },
             ),
     );
   }
 
-  Widget _buildGroup(_ServiceGroup group) {
+  Widget _buildGroup(MyServiceGroup group) {
     final allSelected = group.items.every(
       (item) => _selectedIds.contains(item.serviceItemId),
     );
@@ -308,50 +339,44 @@ class _ServicesViewState extends State<_ServicesView> {
             onToggleAll: () => _toggleGroup(group.items),
           ),
           Gap(10.h),
-          for (final item in group.items) ...[
-            ServiceCard(
-              key: ValueKey(item.serviceItemId),
-              item: item,
-              price: _priceOf(item),
-              isEdited: _editedPrices.containsKey(item.serviceItemId),
-              isSelectionMode: _isSelectionMode,
-              isSelected: _selectedIds.contains(item.serviceItemId),
-              onEdit: () => _editPrice(item),
-              onTap: _isSelectionMode
-                  ? () => _toggleSelection(item.serviceItemId)
-                  : () => _editPrice(item),
-              onLongPress: () => _isSelectionMode
-                  ? _toggleSelection(item.serviceItemId)
-                  : _startSelection(item),
-            ),
-            Gap(10.h),
-          ],
+          // الأنواع بتظهر تحت اسم الصنف الأب، والصنف اللي ملوش أنواع لوحده
+          for (final itemGroup in groupByParent(group.items))
+            if (itemGroup.parentName == null)
+              for (final item in itemGroup.items) _buildCard(item)
+            else ...[
+              _ParentItemHeader(name: itemGroup.parentName!),
+              Gap(8.h),
+              for (final item in itemGroup.items)
+                Padding(
+                  padding: EdgeInsetsDirectional.only(start: 14.w),
+                  child: _buildCard(item),
+                ),
+            ],
         ],
       ),
     );
   }
 
-  /// الريسبونس لستة واحدة، فبنجمّعها بالخدمة بنفس ترتيب أول ظهور ليها
-  List<_ServiceGroup> _groupByService(List<MyServiceItem> items) {
-    final groups = <int, _ServiceGroup>{};
-    for (final item in items) {
-      groups
-          .putIfAbsent(
-            item.serviceId,
-            () => _ServiceGroup(serviceName: item.serviceName),
-          )
-          .items
-          .add(item);
-    }
-    return groups.values.toList();
+  Widget _buildCard(MyServiceItem item) {
+    return Padding(
+      key: ValueKey(item.serviceItemId),
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: ServiceCard(
+        item: item,
+        price: _priceOf(item),
+        isEdited: _editedPrices.containsKey(item.serviceItemId),
+        isSelectionMode: _isSelectionMode,
+        isSelected: _selectedIds.contains(item.serviceItemId),
+        onEdit: () => _editPrice(item),
+        onTap: _isSelectionMode
+            ? () => _toggleSelection(item.serviceItemId)
+            : () => _editPrice(item),
+        onLongPress: () => _isSelectionMode
+            ? _toggleSelection(item.serviceItemId)
+            : _startSelection(item),
+      ),
+    );
   }
-}
-
-class _ServiceGroup {
-  final String serviceName;
-  final List<MyServiceItem> items = [];
-
-  _ServiceGroup({required this.serviceName});
 }
 
 /// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف، وجنبه زرار الإضافة
@@ -551,6 +576,85 @@ class _GroupHeader extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// اسم الصنف الأب فوق أنواعه، زي "قميص" فوق "قميص كتان"
+class _ParentItemHeader extends StatelessWidget {
+  final String name;
+
+  const _ParentItemHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Label(
+      text: name,
+      maxLines: 1,
+      style: TextStyles.darkBold14.copyWith(color: AppColors.greyColor3),
+    );
+  }
+}
+
+/// تنبيه إن بعض الأصناف بقى ليها أنواع وأسعارها القديمة اتمسحت
+/// بيوجّه المغسلة تسعّر الأنواع من صفحة الإضافة
+class _ItemTypesBanner extends StatelessWidget {
+  final VoidCallback onAdd;
+  final VoidCallback onDismiss;
+
+  const _ItemTypesBanner({required this.onAdd, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 18.h),
+      padding: EdgeInsetsDirectional.fromSTEB(14.w, 12.h, 4.w, 4.h),
+      decoration: BoxDecoration(
+        color: AppColors.secondaryColor,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: AppColors.primaryColor.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 20.sp,
+                color: AppColors.primaryColor,
+              ),
+              Gap(8.w),
+              Expanded(
+                child: LocalizedLabel(
+                  text: 'price_item_types_hint',
+                  style: TextStyles.darkRegular14,
+                ),
+              ),
+              IconButton(
+                onPressed: onDismiss,
+                tooltip: 'close'.tr(),
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close, size: 18.sp, color: Colors.grey),
+              ),
+            ],
+          ),
+          TextButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded, color: AppColors.primaryColor),
+            label: LocalizedLabel(
+              text: 'add_service',
+              style: TextStyles.darkBold14.copyWith(
+                color: AppColors.primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

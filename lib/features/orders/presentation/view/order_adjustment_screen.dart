@@ -690,41 +690,74 @@ class _ServiceItemPicker extends StatelessWidget {
                     ),
                   );
                 }
-                return ListView.separated(
+                // متجمّعة بالخدمة، والأنواع تحت اسم الصنف الأب
+                // كلها مسعّرة عند المغسلة، فمفيش فيها صنف ليه أنواع
+                return ListView(
                   shrinkWrap: true,
-                  itemCount: state.items.length,
-                  separatorBuilder: (_, _) => Divider(
-                    height: 1,
-                    color: Colors.grey.withValues(alpha: 0.12),
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = state.items[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      onTap: () => Navigator.of(context).pop(item),
-                      title: Label(
-                        text: item.serviceItemName,
-                        style: TextStyles.darkBold14,
-                      ),
-                      subtitle: Label(
-                        text: item.serviceName,
-                        style: TextStyles.darkRegular12.copyWith(
-                          color: AppColors.greyColor4,
+                  children: [
+                    for (final group in groupByService(state.items)) ...[
+                      Padding(
+                        padding: EdgeInsets.only(top: 10.h, bottom: 2.h),
+                        child: Label(
+                          text: group.serviceName,
+                          style: TextStyles.boldStyle(
+                            15,
+                            weight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                      trailing: Label(
-                        text: formatAmount(item.price),
-                        style: TextStyles.darkBold14.copyWith(
-                          color: AppColors.primaryColor,
-                        ),
+                      for (final itemGroup in groupByParent(group.items))
+                        if (itemGroup.parentName == null)
+                          for (final item in itemGroup.items)
+                            _PickerItemTile(item: item)
+                        else ...[
+                          Padding(
+                            padding: EdgeInsets.only(top: 8.h),
+                            child: Label(
+                              text: itemGroup.parentName!,
+                              style: TextStyles.darkRegular12.copyWith(
+                                color: AppColors.greyColor4,
+                              ),
+                            ),
+                          ),
+                          for (final item in itemGroup.items)
+                            Padding(
+                              padding: EdgeInsetsDirectional.only(start: 14.w),
+                              child: _PickerItemTile(item: item),
+                            ),
+                        ],
+                      Divider(
+                        height: 12.h,
+                        color: Colors.grey.withValues(alpha: 0.12),
                       ),
-                    );
-                  },
+                    ],
+                  ],
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// صنف أو نوع في الـ picker، الضغط عليه بيرجّعه
+class _PickerItemTile extends StatelessWidget {
+  final MyServiceItem item;
+
+  const _PickerItemTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      onTap: () => Navigator.of(context).pop(item),
+      title: Label(text: item.serviceItemName, style: TextStyles.darkBold14),
+      trailing: Label(
+        text: formatAmount(item.price),
+        style: TextStyles.darkBold14.copyWith(color: AppColors.primaryColor),
       ),
     );
   }

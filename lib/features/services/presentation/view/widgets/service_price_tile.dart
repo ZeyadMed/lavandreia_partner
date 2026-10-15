@@ -139,12 +139,14 @@ class _ServicePriceTileState extends State<ServicePriceTile> {
           content = Column(
             children: state.items
                 .map(
-                  (item) => widget.addedItemIds.contains(item.id)
-                      ? _AddedItemRow(item: item)
-                      : _ItemPriceRow(
+                  (item) => item.hasTypes
+                      // الصنف اللي ليه أنواع مالوش سعر، الأنواع بس اللي بتتسعّر
+                      ? _ItemTypesGroup(
+                          key: ValueKey(item.id),
                           item: item,
-                          controller: widget.controllerFor(item.id),
-                        ),
+                          rowFor: _priceableRow,
+                        )
+                      : _priceableRow(item),
                 )
                 .toList(),
           );
@@ -162,6 +164,81 @@ class _ServicePriceTileState extends State<ServicePriceTile> {
           ),
         );
       },
+    );
+  }
+
+  /// صف صنف ملوش أنواع أو نوع: "مضاف" لو المغسلة بتقدمه أصلاً، غير كده حقل سعر
+  Widget _priceableRow(ServiceItem item) =>
+      widget.addedItemIds.contains(item.id)
+      ? _AddedItemRow(item: item)
+      : _ItemPriceRow(item: item, controller: widget.controllerFor(item.id));
+}
+
+/// صنف ليه أنواع: هيدر بيتفتح من غير حقل سعر، وتحته الأنواع بأسعارها
+/// الأسعار بتفضل لما يتقفل لأن الكنترولرز عايشة في الشاشة
+class _ItemTypesGroup extends StatefulWidget {
+  final ServiceItem item;
+  final Widget Function(ServiceItem type) rowFor;
+
+  const _ItemTypesGroup({super.key, required this.item, required this.rowFor});
+
+  @override
+  State<_ItemTypesGroup> createState() => _ItemTypesGroupState();
+}
+
+class _ItemTypesGroupState extends State<_ItemTypesGroup> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          borderRadius: BorderRadius.circular(10.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Label(
+                        text: widget.item.name,
+                        style: TextStyles.darkBold14,
+                      ),
+                      Gap(2.h),
+                      Label(
+                        text: 'item_types_count'.tr(
+                          args: [widget.item.subItems.length.toString()],
+                        ),
+                        style: TextStyles.darkRegular12.copyWith(
+                          color: AppColors.greyColor3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _isExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: _isExpanded ? AppColors.primaryColor : Colors.grey,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_isExpanded)
+          Padding(
+            padding: EdgeInsetsDirectional.only(start: 14.w),
+            child: Column(
+              children: widget.item.priceableItems.map(widget.rowFor).toList(),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -21,17 +21,42 @@ class ServiceCategory {
       );
 }
 
-/// صنف جوه الخدمة زي "قميص"، وهو اللي المغسلة بتحط له سعر
+/// صنف جوه الخدمة زي "قميص"، أو نوع تحت صنف زي "قميص كتان"
+/// الصنف اللي ليه أنواع مبيتسعّرش، الأنواع بس هي اللي ليها سعر
 class ServiceItem {
   final int id;
   final String name;
 
-  const ServiceItem({required this.id, required this.name});
+  /// الصنف الأب لو ده نوع، و null لو صنف رئيسي
+  final int? parentItemId;
+
+  /// أنواع الصنف، فاضية لو الصنف نفسه هو اللي بيتسعّر
+  final List<ServiceItem> subItems;
+
+  const ServiceItem({
+    required this.id,
+    required this.name,
+    this.parentItemId,
+    this.subItems = const [],
+  });
 
   factory ServiceItem.fromJson(Map<String, dynamic> json) => ServiceItem(
     id: (json['id'] as num).toInt(),
     name: json['name']?.toString() ?? '',
+    parentItemId: (json['parentItemId'] as num?)?.toInt(),
+    subItems:
+        (json['subItems'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(ServiceItem.fromJson)
+            .toList() ??
+        const [],
   );
+
+  bool get hasTypes => subItems.isNotEmpty;
+
+  /// اللي ينفع يتحط له سعر: الأنواع لو موجودة، غير كده الصنف نفسه
+  /// السيرفر بيرفض id صنف ليه أنواع، فده الطريق الوحيد للتسعير
+  List<ServiceItem> get priceableItems => hasTypes ? subItems : [this];
 }
 
 /// سعر صنف واحد، ده شكل العنصر اللي بيتبعت لـ my-services

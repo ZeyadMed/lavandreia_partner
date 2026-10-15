@@ -544,14 +544,15 @@ final class BaseApiConsumer implements ApiConsumer {
                 // final message = decoded['message'] ?? 'حدث خطأ ما';
 
                 // Show first message to user
+                // لو الـ result فاضي بنكمل تحت ونرجّع رسالة السيرفر زي ما هي
                 if (messages.isNotEmpty) {
                   navigatorKey.currentContext!.showErrorMessage(messages.first);
+                  return ValidationFailure(
+                    message: messages.first,
+                    errors: messages,
+                    statusCode: error.response?.statusCode,
+                  );
                 }
-                return ValidationFailure(
-                  message: messages.first,
-                  errors: messages,
-                  statusCode: error.response?.statusCode,
-                );
               }
 
               // navigatorKey.currentContext!.showErrorMessage(message);
