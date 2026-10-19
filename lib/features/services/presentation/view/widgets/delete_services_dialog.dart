@@ -5,17 +5,21 @@ import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
+import 'package:lavanderia_partner/features/services/data/models/my_service_item.dart';
 
-/// تأكيد حذف الأصناف المحددة، بنفس شكل ديالوج تسجيل الخروج
+/// تأكيد حذف الأصناف، بنفس شكل ديالوج تسجيل الخروج
+/// لو صنف واحد بيظهر اسمه، ولو أكتر بيظهر عددهم
 /// بيرجّع true لو اليوزر أكّد، و null/false لو رجع
-Future<bool?> showDeleteServicesDialog(BuildContext context, int count) {
+Future<bool?> showDeleteServicesDialog(
+  BuildContext context,
+  List<MyServiceItem> items,
+) {
+  final isSingle = items.length == 1;
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: AppColors.whiteColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
       contentPadding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 16.h),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -35,15 +39,19 @@ Future<bool?> showDeleteServicesDialog(BuildContext context, int count) {
           ),
           Gap(16.h),
           LocalizedLabel(
-            text: 'delete_services',
+            text: isSingle ? 'delete_service_item' : 'delete_services',
             textAlign: TextAlign.center,
             style: TextStyles.boldStyle(18, weight: FontWeight.w800),
           ),
           Gap(8.h),
           Label(
-            text: 'delete_services_confirm'.tr(args: [count.toString()]),
+            text: isSingle
+                ? 'delete_service_item_confirm'.tr(
+                    args: [items.single.serviceItemName],
+                  )
+                : 'delete_services_confirm'.plural(items.length),
             textAlign: TextAlign.center,
-            maxLines: 3,
+            maxLines: 4,
             style: TextStyles.darkRegular14.copyWith(
               color: AppColors.greyColor3,
             ),

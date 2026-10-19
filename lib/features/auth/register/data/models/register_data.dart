@@ -60,9 +60,36 @@ class WorkingDay {
     closeTime: closeTime,
   );
 
-  /// اليوم يبقى تمام لو مقفول، أو لو الساعتين متحددين
-  bool get isValid =>
-      isClosed || (openTime != null && closeTime != null);
+  /// اليوم يبقى تمام لو مقفول، أو لو الساعتين متحددين ومش نفس الوقت
+  bool get isValid => isClosed || (hasHours && !hasSameOpenAndClose);
+
+  bool get hasHours => openTime != null && closeTime != null;
+
+  /// الفتح والقفل في نفس الدقيقة مالهوش معنى واضح (صفر ساعات ولا 24؟) فبنرفضه
+  bool get hasSameOpenAndClose => hasHours && openTime == closeTime;
+
+  /// الدوام بيعدي منتصف الليل ويخلص في اليوم اللي بعده، زي 9:00 PM لـ 2:00 AM
+  /// القفل 12:00 AM بيتحسب هنا برضه، لأنه نهاية اليوم نفسه
+  bool get endsNextDay =>
+      hasHours && closeTime!.minutesOfDay < openTime!.minutesOfDay;
+
+  /// توضيح تحت وقت الفتح، للساعة 12 بس
+  List<String> get openHintKeys => [?openTime?.periodHintKey];
+
+  /// توضيح تحت وقت القفل: الظهر/منتصف الليل، و"اليوم التالي" لو الدوام بيعدي
+  /// منتصف الليل، إلا لو القفل 12:00 AM بالظبط فـ "منتصف الليل" لوحدها كفاية
+  List<String> get closeHintKeys {
+    final hint = closeTime?.periodHintKey;
+    return [?hint, if (endsNextDay && hint != 'midnight') 'next_day'];
+  }
+
+  /// نفس المواعيد اللي هتتحفظ، عشان نعرف لو فيه تعديل لسه ماتحفظش
+  /// ساعات اليوم المقفول مابتتبعتش فمالهاش لازمة في المقارنة
+  bool hasSameHoursAs(WorkingDay other) =>
+      key == other.key &&
+      isClosed == other.isClosed &&
+      (isClosed ||
+          (openTime == other.openTime && closeTime == other.closeTime));
 
   /// السيرفر مستني اسم اليوم بالإنجليزي بحرف كبير زي Sunday
   String get apiDayName => '${key[0].toUpperCase()}${key.substring(1)}';
@@ -106,21 +133,39 @@ class DateTimeRangePart {
   String toApiString() =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:00';
 
-  /// الصيغة اللي بتتعرض لليوزر: 12 ساعة بـ ص/م
-  /// الليبلز بتتبعت من بره عشان الموديل يفضل مستقل عن الترجمة
-  String toDisplayString({String amLabel = 'ص', String pmLabel = 'م'}) {
+  /// عدد الدقايق من أول اليوم، للمقارنة بين وقتين
+  int get minutesOfDay => hour * 60 + minute;
+
+  /// الصيغة اللي بتتعرض لليوزر: 12 ساعة بـ AM/PM في اللغتين، زي تطبيق العميل
+  /// عشان "12 مساءً" كانت بتتقري منتصف الليل وهي في الحقيقة الظهر
+  String toDisplayString({String amLabel = 'AM', String pmLabel = 'PM'}) {
     final period = hour < 12 ? amLabel : pmLabel;
     var displayHour = hour % 12;
     if (displayHour == 0) displayHour = 12;
     return '$displayHour:${minute.toString().padLeft(2, '0')} $period';
   }
+
+  /// الساعة 12 بتلخبط: 12:00 PM هي الظهر و 12:00 AM منتصف الليل
+  /// فبنرجع مفتاح ترجمة يتكتب جنبها، وباقي الساعات مش محتاجة توضيح
+  String? get periodHintKey {
+    if (hour == 12) return 'noon';
+    if (hour == 0) return minute == 0 ? 'midnight' : 'after_midnight';
+    return null;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is DateTimeRangePart &&
+      other.hour == hour &&
+      other.minute == minute;
+
+  @override
+  int get hashCode => Object.hash(hour, minute);
 }
 
-/// عرض الوقت بليبلز مترجمة، بيتستخدم في كل مكان بيعرض ساعة لليوزر
-extension LocalizedTimeDisplay on DateTimeRangePart {
-  String toLocalizedString() =>
-      toDisplayString(amLabel: 'am'.tr(), pmLabel: 'pm'.tr());
-}
+/// توضيحات الوقت (الظهر، منتصف الليل، اليوم التالي) في سطر واحد
+String localizedTimeHints(List<String> hintKeys) =>
+    hintKeys.map((key) => key.tr()).join(' · ');
 
 /// كل بيانات التسجيل في مكان واحد
 /// الكنترولر بيمسك نسخة واحدة منها وبيمررها لشاشة المراجعة في الآخر

@@ -73,6 +73,11 @@ extension StringExtensions on String {
   }
 
 
+  /// بيلف النص في عزل من الشمال لليمين (LRI … PDI) عشان الأرقام اللي فيها +
+  /// زي +218 تتعرض صح جوه الواجهة العربي حتى لو جنب كلام عربي في نفس السطر،
+  /// والنص الفاضي بيرجع زي ما هو عشان تشيكات isEmpty تفضل شغالة
+  String get forceLtr => isEmpty ? this : '\u2066$this\u2069';
+
   /// Returns the string parsed as an int.
   int get toInt {
     return int.tryParse(this)??0;

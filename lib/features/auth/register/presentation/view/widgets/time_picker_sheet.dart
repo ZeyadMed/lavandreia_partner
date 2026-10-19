@@ -13,11 +13,14 @@ import 'package:lavanderia_partner/features/auth/register/data/models/register_d
 /// بوتوم شيت لاختيار الوقت بعجلات 12 ساعة
 /// اتعمل بدل showTimePicker لأن الأخير بيرسم دايرتين ساعات
 /// (0-11 جوه و 12-23 بره) لما الجهاز بنظام 24 ساعة، والأرقام بتركب فوق بعض
-/// وكمان العرض عندنا 12 ساعة بـ ص/م فالأنسب إن الاختيار يبقى بنفس الشكل
+/// وكمان العرض عندنا 12 ساعة بـ AM/PM فالأنسب إن الاختيار يبقى بنفس الشكل
+/// [opensAt] بيتبعت لما بنختار وقت القفل، عشان المعاينة تقول "اليوم التالي"
+/// لو الدوام هيعدي منتصف الليل
 Future<DateTimeRangePart?> showAppTimePicker({
   required BuildContext context,
   required String titleKey,
   DateTimeRangePart? initialTime,
+  DateTimeRangePart? opensAt,
 }) {
   return showModalBottomSheet<DateTimeRangePart>(
     context: context,
@@ -26,6 +29,7 @@ Future<DateTimeRangePart?> showAppTimePicker({
     builder: (_) => _TimePickerSheet(
       titleKey: titleKey,
       initialTime: initialTime ?? const DateTimeRangePart(hour: 9, minute: 0),
+      opensAt: opensAt,
     ),
   );
 }
@@ -33,8 +37,13 @@ Future<DateTimeRangePart?> showAppTimePicker({
 class _TimePickerSheet extends StatefulWidget {
   final String titleKey;
   final DateTimeRangePart initialTime;
+  final DateTimeRangePart? opensAt;
 
-  const _TimePickerSheet({required this.titleKey, required this.initialTime});
+  const _TimePickerSheet({
+    required this.titleKey,
+    required this.initialTime,
+    this.opensAt,
+  });
 
   @override
   State<_TimePickerSheet> createState() => _TimePickerSheetState();
@@ -81,6 +90,17 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
     return DateTimeRangePart(hour: hour24, minute: _minute);
   }
 
+  /// الظهر/منتصف الليل للساعة 12، و"اليوم التالي" لو ده وقت قفل قبل وقت الفتح
+  List<String> get _hintKeys {
+    final opensAt = widget.opensAt;
+    if (opensAt == null) return [?_result.periodHintKey];
+    return WorkingDay(
+      key: '',
+      openTime: opensAt,
+      closeTime: _result,
+    ).closeHintKeys;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -103,10 +123,17 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
             Gap(4.h),
             // معاينة حية للوقت المختار عشان اليوزر يتأكد قبل ما يحفظ
             Label(
-              text: _result.toLocalizedString(),
+              text: _result.toDisplayString(),
               style: TextStyles.blueBold20,
             ),
-            Gap(12.h),
+            // السطر موجود دايماً حتى لو فاضي، عشان العجلات ماتتنططش لما يظهر
+            Label(
+              text: localizedTimeHints(_hintKeys),
+              style: TextStyles.darkRegular14.copyWith(
+                color: AppColors.greyColor3,
+              ),
+            ),
+            Gap(8.h),
             _buildWheels(),
             Gap(8.h),
             _buildPeriodToggle(),

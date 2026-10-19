@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
@@ -87,7 +88,7 @@ class CustomerInfoCard extends StatelessWidget {
                     ),
                     Gap(4.h),
                     Label(
-                      text: order.customerPhone,
+                      text: order.customerPhone.forceLtr,
                       maxLines: 1,
                       style: TextStyles.darkRegular12.copyWith(
                         color: AppColors.greyColor4,
@@ -145,7 +146,7 @@ class CustomerInfoCard extends StatelessWidget {
                   child: Label(
                     text: [
                       order.pickupContactName,
-                      order.pickupContactPhone,
+                      order.pickupContactPhone.forceLtr,
                     ].where((text) => text.isNotEmpty).join(' • '),
                     maxLines: 1,
                     style: TextStyles.darkBold14.copyWith(

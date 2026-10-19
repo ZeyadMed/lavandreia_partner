@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/driver_accreditation_badges.dart';
@@ -135,7 +136,10 @@ class DriverTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = [phone, vehicleType].where((text) => text.isNotEmpty);
+    final subtitle = [
+      phone.forceLtr,
+      vehicleType,
+    ].where((text) => text.isNotEmpty);
 
     return Row(
       children: [

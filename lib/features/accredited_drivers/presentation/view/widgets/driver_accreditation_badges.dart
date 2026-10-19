@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
+import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/helpers/bottom_sheet.dart';
 import 'package:lavanderia_partner/core/http/either.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
@@ -209,7 +210,7 @@ class _MoreChip extends StatelessWidget {
       child: _Chip(
         background: AppColors.primaryColor.withValues(alpha: 0.08),
         child: Label(
-          text: 'more_count'.tr(args: ['$count']),
+          text: 'more_count'.tr(args: ['$count']).forceLtr,
           maxLines: 1,
           style: TextStyles.darkRegular12.copyWith(
             color: AppColors.primaryColor,

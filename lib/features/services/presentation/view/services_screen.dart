@@ -6,7 +6,6 @@ import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/bloc/base_bloc.dart';
 import 'package:lavanderia_partner/core/cache_manager/cache_manager.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
-import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
 import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
@@ -21,11 +20,13 @@ import 'package:lavanderia_partner/features/services/presentation/view/widgets/d
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/edit_service_price_sheet.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/service_card.dart';
 import 'package:lavanderia_partner/features/services/presentation/view/widgets/services_skeleton.dart';
+import 'package:lavanderia_partner/features/services/presentation/view/widgets/swipe_to_delete.dart';
 import 'package:lavanderia_partner/features/services/presentation/view_model/services_cubits.dart';
 
 /// صفحة خدمات المغسلة: الأصناف بأسعارها متجمعة تحت كل خدمة
 /// تعديل السعر بيفضل محلي لحد ما اليوزر يضغط حفظ (PUT)
-/// والضغط المطوّل على صنف بيفتح وضع التحديد للحذف (DELETE)
+/// سحب الصنف بيكشف زرار حذفه، وزرار التحديد أو الضغط المطوّل بيفتح
+/// وضع التحديد لحذف كذا صنف مع بعض (DELETE)، والاتنين بتأكيد الأول
 /// وزرار الإضافة بيفتح الخدمات المتاحة لإضافة أصناف جديدة
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -60,6 +61,9 @@ class _ServicesViewState extends State<_ServicesView> {
   /// الأصناف المحددة للحذف بالـ serviceItemId
   final Set<int> _selectedIds = {};
   bool _isSelectionMode = false;
+
+  /// الصنف اللي مسحوب وزرار حذفه ظاهر، عشان صنف واحد بس يفضل مفتوح
+  final _openSwipeId = ValueNotifier<Object?>(null);
 
   /// تنبيه تسعير الأنواع، بيختفي للأبد لما المغسلة تقفله
   late bool _showTypesBanner =
@@ -113,10 +117,18 @@ class _ServicesViewState extends State<_ServicesView> {
     context.showSuccessMessage('services_added'.tr());
   }
 
-  void _startSelection(MyServiceItem item) {
+  @override
+  void dispose() {
+    _openSwipeId.dispose();
+    super.dispose();
+  }
+
+  /// من زرار التحديد من غير صنف، أو من الضغط المطوّل على صنف
+  void _startSelection([MyServiceItem? item]) {
+    _openSwipeId.value = null;
     setState(() {
       _isSelectionMode = true;
-      _selectedIds.add(item.serviceItemId);
+      if (item != null) _selectedIds.add(item.serviceItemId);
     });
   }
 
@@ -145,15 +157,22 @@ class _ServicesViewState extends State<_ServicesView> {
     });
   }
 
-  Future<void> _deleteSelected() async {
-    if (_selectedIds.isEmpty) return;
-    final confirmed = await showDeleteServicesDialog(
-      context,
-      _selectedIds.length,
-    );
+  void _deleteSelected() {
+    _confirmAndDelete([
+      for (final item in context.read<MyServicesCubit>().state.items)
+        if (_selectedIds.contains(item.serviceItemId)) item,
+    ]);
+  }
+
+  /// مفيش حذف من غير ما اليوزر يأكّد الأول
+  Future<void> _confirmAndDelete(List<MyServiceItem> items) async {
+    if (items.isEmpty) return;
+    final confirmed = await showDeleteServicesDialog(context, items);
     if (confirmed != true || !mounted) return;
 
-    context.read<DeleteMyServicesCubit>().submit(_selectedIds.toList());
+    context.read<DeleteMyServicesCubit>().submit([
+      for (final item in items) item.serviceItemId,
+    ]);
   }
 
   void _onUpdateStateChanged(
@@ -176,7 +195,7 @@ class _ServicesViewState extends State<_ServicesView> {
       // التعديلات بتاعة الأصناف اللي اتحذفت ملهاش لازمة
       _editedPrices.removeWhere((id, _) => deletedIds.contains(id));
       _exitSelection();
-      context.showSuccessMessage('services_deleted'.tr());
+      context.showSuccessMessage('services_deleted'.plural(deletedIds.length));
       return;
     }
     _showServerError(context, state.isFailure, state.failure);
@@ -221,18 +240,26 @@ class _ServicesViewState extends State<_ServicesView> {
                     ? _SelectionHeader(
                         selectedCount: _selectedIds.length,
                         onClose: _exitSelection,
-                        onDelete: _deleteSelected,
                       )
                     : _ServicesHeader(
                         itemsCount: state.items.length,
+                        onSelect: state.items.isNotEmpty
+                            ? _startSelection
+                            : null,
                         // لازم اللستة تكون اتجابت الأول، عشان الأصناف الموجودة تظهر "مضاف"
                         onAdd: state.isSuccess
                             ? () => _addServices(state.items)
                             : null,
                       ),
                 Expanded(child: _buildBody(context, state)),
+                // زرار الحذف الجماعي تحت وظاهر طول ما وضع التحديد مفتوح
+                if (_isSelectionMode)
+                  _DeleteBar(
+                    selectedCount: _selectedIds.length,
+                    onDelete: _deleteSelected,
+                  )
                 // شريط الحفظ بيظهر بس لما يكون فيه تعديلات، ومش في وضع التحديد
-                if (_editedPrices.isNotEmpty && !_isSelectionMode)
+                else if (_editedPrices.isNotEmpty)
                   BlocBuilder<
                     UpdateMyServicesCubit,
                     BaseState<List<ServiceItemPrice>>
@@ -260,8 +287,15 @@ class _ServicesViewState extends State<_ServicesView> {
     }
 
     final groups = groupByService(state.items);
-    // الأصناف اللي بقى ليها أنواع أسعارها القديمة اتمسحت، فاللستة ممكن تكون ناقصة
-    final showBanner = _showTypesBanner && !_isSelectionMode;
+    final leading = [
+      // الأصناف اللي بقى ليها أنواع أسعارها القديمة اتمسحت، فاللستة ممكن تكون ناقصة
+      if (_showTypesBanner && !_isSelectionMode)
+        _ItemTypesBanner(
+          onAdd: () => _addServices(state.items),
+          onDismiss: _dismissTypesBanner,
+        ),
+      if (!_isSelectionMode) const _SwipeHint(),
+    ];
     return RefreshIndicator(
       color: AppColors.primaryColor,
       onRefresh: cubit.fetchData,
@@ -305,19 +339,20 @@ class _ServicesViewState extends State<_ServicesView> {
                 ),
               ],
             )
-          : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-              itemCount: groups.length + (showBanner ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (showBanner && index == 0) {
-                  return _ItemTypesBanner(
-                    onAdd: () => _addServices(state.items),
-                    onDismiss: _dismissTypesBanner,
-                  );
-                }
-                return _buildGroup(groups[index - (showBanner ? 1 : 0)]);
+          // أول ما اللستة تتحرك الصنف المسحوب بيتقفل
+          : NotificationListener<ScrollStartNotification>(
+              onNotification: (_) {
+                _openSwipeId.value = null;
+                return false;
               },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
+                itemCount: leading.length + groups.length,
+                itemBuilder: (context, index) => index < leading.length
+                    ? leading[index]
+                    : _buildGroup(groups[index - leading.length]),
+              ),
             ),
     );
   }
@@ -361,32 +396,58 @@ class _ServicesViewState extends State<_ServicesView> {
     return Padding(
       key: ValueKey(item.serviceItemId),
       padding: EdgeInsets.only(bottom: 10.h),
-      child: ServiceCard(
-        item: item,
-        price: _priceOf(item),
-        isEdited: _editedPrices.containsKey(item.serviceItemId),
-        isSelectionMode: _isSelectionMode,
-        isSelected: _selectedIds.contains(item.serviceItemId),
-        onEdit: () => _editPrice(item),
-        onTap: _isSelectionMode
-            ? () => _toggleSelection(item.serviceItemId)
-            : () => _editPrice(item),
-        onLongPress: () => _isSelectionMode
-            ? _toggleSelection(item.serviceItemId)
-            : _startSelection(item),
+      // الصنف اللي بيتحذف بيبهت لحد ما الريكوست يخلص
+      child: BlocSelector<DeleteMyServicesCubit, BaseState<List<int>>, bool>(
+        selector: (state) =>
+            state.isLoading &&
+            (state.data?.contains(item.serviceItemId) ?? false),
+        builder: (context, isDeleting) => IgnorePointer(
+          ignoring: isDeleting,
+          child: AnimatedOpacity(
+            opacity: isDeleting ? 0.4 : 1,
+            duration: const Duration(milliseconds: 150),
+            child: SwipeToDelete(
+              id: item.serviceItemId,
+              openId: _openSwipeId,
+              enabled: !_isSelectionMode,
+              onDelete: () => _confirmAndDelete([item]),
+              child: ServiceCard(
+                item: item,
+                price: _priceOf(item),
+                isEdited: _editedPrices.containsKey(item.serviceItemId),
+                isSelectionMode: _isSelectionMode,
+                isSelected: _selectedIds.contains(item.serviceItemId),
+                onEdit: () => _editPrice(item),
+                onTap: _isSelectionMode
+                    ? () => _toggleSelection(item.serviceItemId)
+                    : () => _editPrice(item),
+                onLongPress: () => _isSelectionMode
+                    ? _toggleSelection(item.serviceItemId)
+                    : _startSelection(item),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف، وجنبه زرار الإضافة
+/// الهيدر الأزرق: عنوان الصفحة وتحته عدد الأصناف، وجنبه زرارين التحديد والإضافة
 class _ServicesHeader extends StatelessWidget {
   final int itemsCount;
+
+  /// null لو مفيش أصناف تتحدد
+  final VoidCallback? onSelect;
 
   /// null لحد ما أصناف المغسلة تتجاب
   final VoidCallback? onAdd;
 
-  const _ServicesHeader({required this.itemsCount, required this.onAdd});
+  const _ServicesHeader({
+    required this.itemsCount,
+    required this.onSelect,
+    required this.onAdd,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -413,18 +474,34 @@ class _ServicesHeader extends StatelessWidget {
             ),
           ),
           Gap(12.w),
-          _AddButton(onTap: onAdd),
+          _HeaderButton(
+            icon: Icons.checklist_rounded,
+            labelKey: 'select',
+            onTap: onSelect,
+          ),
+          Gap(8.w),
+          _HeaderButton(
+            icon: Icons.add_rounded,
+            labelKey: 'add_service',
+            onTap: onAdd,
+          ),
         ],
       ),
     );
   }
 }
 
-/// زرار "إضافة خدمة" الأبيض الشفاف في الهيدر، بيبهت لما يكون مقفول
-class _AddButton extends StatelessWidget {
+/// زرار أبيض شفاف في الهيدر، بيبهت لما يكون مقفول
+class _HeaderButton extends StatelessWidget {
+  final IconData icon;
+  final String labelKey;
   final VoidCallback? onTap;
 
-  const _AddButton({required this.onTap});
+  const _HeaderButton({
+    required this.icon,
+    required this.labelKey,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -441,14 +518,10 @@ class _AddButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.add_rounded,
-                  size: 18.sp,
-                  color: AppColors.whiteColor,
-                ),
+                Icon(icon, size: 18.sp, color: AppColors.whiteColor),
                 Gap(4.w),
                 LocalizedLabel(
-                  text: 'add_service',
+                  text: labelKey,
                   style: TextStyles.whiteText(13, weight: FontWeight.w700),
                 ),
               ],
@@ -460,17 +533,12 @@ class _AddButton extends StatelessWidget {
   }
 }
 
-/// الهيدر في وضع التحديد: قفل وعدد المحدد وزرار الحذف
+/// الهيدر في وضع التحديد: قفل وعدد المحدد، وزرار الحذف في الشريط اللي تحت
 class _SelectionHeader extends StatelessWidget {
   final int selectedCount;
   final VoidCallback onClose;
-  final VoidCallback onDelete;
 
-  const _SelectionHeader({
-    required this.selectedCount,
-    required this.onClose,
-    required this.onDelete,
-  });
+  const _SelectionHeader({required this.selectedCount, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -479,28 +547,28 @@ class _SelectionHeader extends StatelessWidget {
         children: [
           IconButton(
             onPressed: onClose,
+            tooltip: 'cancel'.tr(),
             icon: const Icon(Icons.close, color: AppColors.whiteColor),
           ),
           Gap(4.w),
           Expanded(
-            child: Label(
-              text: 'selected_count'.tr(args: [selectedCount.toString()]),
-              style: TextStyles.whiteText(18, weight: FontWeight.w800),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Label(
+                  text: 'selected_count'.tr(args: [selectedCount.toString()]),
+                  style: TextStyles.whiteText(18, weight: FontWeight.w800),
+                ),
+                LocalizedLabel(
+                  text: 'tap_items_to_select',
+                  maxLines: 1,
+                  style: TextStyles.whiteText(
+                    13,
+                    weight: FontWeight.w400,
+                  ).copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                ),
+              ],
             ),
-          ),
-          BlocBuilder<DeleteMyServicesCubit, BaseState<List<int>>>(
-            builder: (context, state) => state.isLoading
-                ? const LoadingButton(color: AppColors.whiteColor)
-                : IconButton(
-                    onPressed: selectedCount == 0 ? null : onDelete,
-                    tooltip: 'delete'.tr(),
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: selectedCount == 0
-                          ? Colors.white.withValues(alpha: 0.4)
-                          : AppColors.whiteColor,
-                    ),
-                  ),
           ),
         ],
       ),
@@ -576,6 +644,33 @@ class _GroupHeader extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// سطر صغير فوق الأصناف بيعرّف المغسلة إن السحب بيكشف زرار الحذف
+class _SwipeHint extends StatelessWidget {
+  const _SwipeHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 14.h),
+      child: Row(
+        children: [
+          Icon(Icons.swipe_rounded, size: 18.sp, color: AppColors.greyColor3),
+          Gap(6.w),
+          Expanded(
+            child: LocalizedLabel(
+              text: 'swipe_to_delete_hint',
+              maxLines: 2,
+              style: TextStyles.darkRegular12.copyWith(
+                color: AppColors.greyColor3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -701,6 +796,95 @@ class _SaveBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _BottomBar(
+      child: CustomButton(
+        // بنقفل الضغط وقت الحفظ عشان مايتبعتش مرتين
+        onPressed: isSaving ? () {} : onSave,
+        title: isSaving ? 'saving' : 'save_changes',
+        backgroundColor: isSaving
+            ? AppColors.primaryColor.withValues(alpha: 0.6)
+            : AppColors.primaryColor,
+      ),
+    );
+  }
+}
+
+/// شريط الحذف الجماعي في وضع التحديد، بيبهت لحد ما يتحدد صنف
+class _DeleteBar extends StatelessWidget {
+  final int selectedCount;
+  final VoidCallback onDelete;
+
+  const _DeleteBar({required this.selectedCount, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DeleteMyServicesCubit, BaseState<List<int>>>(
+      builder: (context, state) {
+        final isDeleting = state.isLoading;
+        final enabled = selectedCount > 0 && !isDeleting;
+        return _BottomBar(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15.w),
+            child: Material(
+              color: enabled
+                  ? AppColors.redColor2
+                  : AppColors.redColor2.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12.r),
+              child: InkWell(
+                onTap: enabled ? onDelete : null,
+                borderRadius: BorderRadius.circular(12.r),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 15.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isDeleting)
+                        SizedBox.square(
+                          dimension: 18.sp,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.whiteColor,
+                          ),
+                        )
+                      else
+                        Icon(
+                          Icons.delete_outline_rounded,
+                          size: 20.sp,
+                          color: AppColors.whiteColor,
+                        ),
+                      Gap(8.w),
+                      Label(
+                        text: isDeleting
+                            ? 'deleting'.tr()
+                            : 'delete_selected_count'.tr(
+                                args: [selectedCount.toString()],
+                              ),
+                        maxLines: 1,
+                        style: TextStyles.whiteText(
+                          16,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// الشريط الأبيض اللي تحت الصفحة، للحفظ أو للحذف الجماعي
+class _BottomBar extends StatelessWidget {
+  final Widget child;
+
+  const _BottomBar({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(5.w, 14.h, 5.w, 14.h),
       decoration: BoxDecoration(
@@ -713,17 +897,7 @@ class _SaveBar extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: CustomButton(
-          // بنقفل الضغط وقت الحفظ عشان مايتبعتش مرتين
-          onPressed: isSaving ? () {} : onSave,
-          title: isSaving ? 'saving' : 'save_changes',
-          backgroundColor: isSaving
-              ? AppColors.primaryColor.withValues(alpha: 0.6)
-              : AppColors.primaryColor,
-        ),
-      ),
+      child: SafeArea(top: false, child: child),
     );
   }
 }

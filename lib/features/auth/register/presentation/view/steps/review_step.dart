@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/common_widget/loading_button.dart';
+import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/custom_button.dart';
@@ -73,11 +74,14 @@ class ReviewStep extends StatelessWidget {
             Gap(6.h),
           ],
           ReviewRow(labelKey: 'laundry_name', value: data.laundryName),
-          ReviewRow(labelKey: 'laundry_phone', value: data.laundryPhone),
+          ReviewRow(
+            labelKey: 'laundry_phone',
+            value: data.laundryPhone.forceLtr,
+          ),
           ReviewRow(labelKey: 'owner_name', value: data.ownerName),
           ReviewRow(
             labelKey: 'owner_phone',
-            value: data.ownerPhone,
+            value: data.ownerPhone.forceLtr,
             showDivider: false,
           ),
         ],
@@ -138,9 +142,9 @@ class ReviewStep extends StatelessWidget {
                           )
                         : Label(
                             text:
-                                '${day.openTime?.toLocalizedString() ?? '--:--'}'
+                                '${_timeWithHints(day.openTime, day.openHintKeys)}'
                                 ' - '
-                                '${day.closeTime?.toLocalizedString() ?? '--:--'}',
+                                '${_timeWithHints(day.closeTime, day.closeHintKeys)}',
                             style: TextStyles.darkBold12,
                           ),
                   ],
@@ -150,6 +154,14 @@ class ReviewStep extends StatelessWidget {
             .toList(),
       ),
     );
+  }
+
+  /// زي 2:00 AM (اليوم التالي)، عشان الدوام اللي بيعدي منتصف الليل يبان صح
+  String _timeWithHints(DateTimeRangePart? time, List<String> hintKeys) {
+    if (time == null) return '--:--';
+    final text = time.toDisplayString();
+    if (hintKeys.isEmpty) return text;
+    return '$text (${localizedTimeHints(hintKeys)})';
   }
 }
 

@@ -130,6 +130,16 @@ class MyApp extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              Gap(10.h),
+                              Center(
+                                child: Text(
+                                  "checkInternet".tr(),
+                                  style: TextStyles.darkRegular12.copyWith(
+                                    color: AppColors.greyColor4,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),

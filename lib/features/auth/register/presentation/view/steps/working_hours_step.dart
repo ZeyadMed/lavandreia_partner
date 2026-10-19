@@ -52,13 +52,12 @@ class _WorkingHoursStepState extends State<WorkingHoursStep> {
               .toList();
   }
 
+  /// الساعات بتفضل محفوظة وهو مقفول، فلو رجّع اليوم يلاقي اللي كان محدده
+  /// ومابتتبعتش للسيرفر طول ما اليوم مقفول
   void _toggleClosed(WorkingDay day, bool isClosed) {
     setState(() {
       day.isClosed = isClosed;
-      if (isClosed) {
-        day.openTime = null;
-        day.closeTime = null;
-      } else {
+      if (!isClosed) {
         // بنرجّع الافتراضي عشان اليوزر مايفضلش يحدد من الصفر
         day.openTime ??= _defaultOpen;
         day.closeTime ??= _defaultClose;
@@ -74,6 +73,7 @@ class _WorkingHoursStepState extends State<WorkingHoursStep> {
       context: context,
       titleKey: isOpenTime ? 'select_open_time' : 'select_close_time',
       initialTime: current ?? (isOpenTime ? _defaultOpen : _defaultClose),
+      opensAt: isOpenTime ? null : day.openTime,
     );
 
     if (picked == null || !mounted) return;
@@ -96,7 +96,11 @@ class _WorkingHoursStepState extends State<WorkingHoursStep> {
 
     if (invalid.isNotEmpty) {
       setState(() => _invalidDays = invalid);
-      _showMessage('set_hours_for_open_days');
+      _showMessage(
+        _days.any((day) => !day.isClosed && day.hasSameOpenAndClose)
+            ? 'open_close_same_time'
+            : 'set_hours_for_open_days',
+      );
       return;
     }
 

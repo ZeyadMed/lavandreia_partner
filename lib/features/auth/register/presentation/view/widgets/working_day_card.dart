@@ -6,8 +6,8 @@ import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
 
-/// كارت يوم واحد في مواعيد العمل: اسم اليوم وسويتش "مغلق"
-/// ولو مفتوح بيظهر تحته "من" و "إلى"
+/// كارت يوم واحد في مواعيد العمل: اسم اليوم وسويتش تفعيل اليوم
+/// السويتش شغال = اليوم مفتوح وتحته "من" و "إلى"، ومطفي = اليوم أجازة
 /// بيتستخدم في خطوة التسجيل وفي صفحة تعديل المواعيد
 class WorkingDayCard extends StatelessWidget {
   final WorkingDay day;
@@ -59,43 +59,50 @@ class WorkingDayCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // الليبل بيقول حالة اليوم الحالية، والسويتش شغال يعني اليوم مفتوح
                 LocalizedLabel(
-                  text: 'closed',
+                  text: day.isClosed ? 'closed' : 'open',
                   style: TextStyles.darkRegular14.copyWith(
                     color: day.isClosed
                         ? AppColors.redColor
-                        : AppColors.greyColor4,
+                        : AppColors.primaryColor,
                   ),
                 ),
                 Gap(4.w),
                 Switch(
-                  value: day.isClosed,
-                  activeThumbColor: AppColors.redColor,
-                  onChanged: onClosedChanged,
+                  value: !day.isClosed,
+                  activeThumbColor: AppColors.primaryColor,
+                  onChanged: (isOpen) => onClosedChanged(!isOpen),
                 ),
               ],
             ),
             // الساعات بتختفي خالص لما اليوم يبقى مقفول
             if (!day.isClosed) ...[
               Gap(6.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TimeBox(
-                      labelKey: 'from',
-                      time: day.openTime,
-                      onTap: onPickOpenTime,
+              // الخانتين بنفس الطول حتى لو واحدة بس فيها توضيح تحت الوقت
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _TimeBox(
+                        labelKey: 'from',
+                        time: day.openTime,
+                        hintKeys: day.openHintKeys,
+                        onTap: onPickOpenTime,
+                      ),
                     ),
-                  ),
-                  Gap(10.w),
-                  Expanded(
-                    child: _TimeBox(
-                      labelKey: 'to',
-                      time: day.closeTime,
-                      onTap: onPickCloseTime,
+                    Gap(10.w),
+                    Expanded(
+                      child: _TimeBox(
+                        labelKey: 'to',
+                        time: day.closeTime,
+                        hintKeys: day.closeHintKeys,
+                        onTap: onPickCloseTime,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -106,15 +113,18 @@ class WorkingDayCard extends StatelessWidget {
 }
 
 /// خانة الوقت الواحدة: "من" أو "إلى" وتحتها الساعة المختارة
+/// وتحت الساعة توضيح لو محتاجة، زي "منتصف الليل" أو "اليوم التالي"
 class _TimeBox extends StatelessWidget {
   final String labelKey;
   final DateTimeRangePart? time;
+  final List<String> hintKeys;
   final VoidCallback onTap;
 
   const _TimeBox({
     required this.labelKey,
     required this.time,
     required this.onTap,
+    this.hintKeys = const [],
   });
 
   @override
@@ -132,11 +142,7 @@ class _TimeBox extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.access_time,
-              size: 16.sp,
-              color: AppColors.primaryColor,
-            ),
+            Icon(Icons.access_time, size: 16.sp, color: AppColors.primaryColor),
             Gap(6.w),
             Expanded(
               child: Column(
@@ -149,9 +155,17 @@ class _TimeBox extends StatelessWidget {
                     ),
                   ),
                   Label(
-                    text: time?.toLocalizedString() ?? '--:--',
+                    text: time?.toDisplayString() ?? '--:--',
                     style: TextStyles.darkBold14,
                   ),
+                  if (time != null && hintKeys.isNotEmpty)
+                    Label(
+                      text: localizedTimeHints(hintKeys),
+                      maxLines: 2,
+                      style: TextStyles.darkRegular12.copyWith(
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
                 ],
               ),
             ),
