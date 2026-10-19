@@ -36,6 +36,12 @@ abstract interface class Endpoints {
   /// حذف الحساب نهائياً، DELETE من غير body
   static const String deleteAccount = '/api/laundry/account';
 
+  /// أرقام وإيميل الدعم اللي بتتغير من لوحة التحكم، GET
+  static const String contacts = 'api/auth/contacts';
+
+  /// سياسة الخصوصية كـ HTML من لوحة التحكم، GET
+  static const String privacyPolicy = 'api/auth/privacy-policy';
+
   // ****************************** Laundry ********************************
   /// بيانات المغسلة: الاسم والصورة والعنوان وغيرهم
   static const String laundryProfile = 'api/laundry/profile';

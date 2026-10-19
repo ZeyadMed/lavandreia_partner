@@ -21,6 +21,7 @@ import 'package:lavanderia_partner/features/profile/data/models/partner_profile.
 import 'package:lavanderia_partner/features/profile/data/profile_data_source.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/edit_laundry_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/legal_page_screen.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view/privacy_policy_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/reviews_screen.dart';
 import 'package:lavanderia_partner/features/notifications/presentation/view/notifications_screen.dart';
 import 'package:lavanderia_partner/features/profile/presentation/view/support_screen.dart';
@@ -226,15 +227,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           labelKey: 'support_and_help',
           onTap: () => _open(const SupportScreen()),
         ),
-        ProfileMenuTile(
-          icon: Icons.description_outlined,
-          labelKey: 'terms_and_conditions',
-          onTap: () => _open(const LegalPageScreen.terms()),
-        ),
+        // ProfileMenuTile(
+        //   icon: Icons.description_outlined,
+        //   labelKey: 'terms_and_conditions',
+        //   onTap: () => _open(const LegalPageScreen.terms()),
+        // ),
         ProfileMenuTile(
           icon: Icons.privacy_tip_outlined,
           labelKey: 'privacy_policy',
-          onTap: () => _open(const LegalPageScreen.privacy()),
+          onTap: () => _open(const PrivacyPolicyScreen()),
           showDivider: false,
         ),
       ],

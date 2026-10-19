@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -62,6 +64,12 @@ class Customtextfield extends StatefulWidget {
 
 class _CustomtextfieldState extends State<Customtextfield> {
   late bool hidden;
+
+  /// كلمة المرور بتتكتب دايماً من الشمال لليمين حتى والواجهة عربي، عشان
+  /// الحروف والأرقام والرموز تظهر بنفس ترتيب الكتابة (abc123! مش !abc123).
+  /// بنعرفها من نوع الكيبورد مش من obscureText، عشان الاتجاه مايتقلبش
+  /// لما اليوزر يدوس على زرار إظهار الباسورد
+  bool get _isPassword => widget.keyboardType == TextInputType.visiblePassword;
 
   @override
   void initState() {
@@ -135,6 +143,7 @@ class _CustomtextfieldState extends State<Customtextfield> {
           focusNode: widget.focusNode,
           onChanged: widget.onChanged,
           obscureText: hidden,
+          textDirection: _isPassword ? ui.TextDirection.ltr : null,
           style: widget.style ?? TextStyles.darkRegular16,
           onTap:
               widget.onTap ??

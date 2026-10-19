@@ -16,6 +16,7 @@ import 'package:lavanderia_partner/features/auth/login/data/login_data_source.da
 import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
 import 'package:lavanderia_partner/features/notifications/data/notifications_data_source.dart';
+import 'package:lavanderia_partner/features/profile/data/app_info_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/profile_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/reviews_data_source.dart';
 import 'package:lavanderia_partner/features/profile/data/working_hours_data_source.dart';
@@ -136,6 +137,10 @@ class SharedServiceLocator {
 
     getIt.registerLazySingleton<NotificationsDataSource>(
       () => NotificationsDataSource(getIt<GenericDataSource>()),
+    );
+
+    getIt.registerLazySingleton<AppInfoDataSource>(
+      () => AppInfoDataSource(getIt<GenericDataSource>()),
     );
 
     // singleton مش lazy عشان العنوان يفضل محفوظ ويتشارك بين الشاشات

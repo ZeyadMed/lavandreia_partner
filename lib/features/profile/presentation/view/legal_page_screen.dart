@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -6,9 +7,10 @@ import 'package:lavanderia_partner/core/common_widget/label.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/profile/data/legal_content.dart';
+import 'package:lavanderia_partner/features/profile/presentation/view/widgets/legal_widgets.dart';
 
-/// صفحة نصية بأقسام، بتستخدمها الشروط والأحكام وسياسة الخصوصية
-/// الاتنين نفس الشكل بالظبط والفرق في المحتوى بس
+/// صفحة نصية بأقسام ثابتة، بتستخدمها الشروط والأحكام
+/// سياسة الخصوصية جاية من الـ API في PrivacyPolicyScreen بنفس الشكل
 class LegalPageScreen extends StatelessWidget {
   final String titleKey;
   final List<LegalSection> sections;
@@ -29,12 +31,6 @@ class LegalPageScreen extends StatelessWidget {
       sections = LegalContent.terms,
       lastUpdatedKey = 'terms_last_updated';
 
-  /// صفحة سياسة الخصوصية
-  const LegalPageScreen.privacy({super.key})
-    : titleKey = 'privacy_policy',
-      sections = LegalContent.privacy,
-      lastUpdatedKey = 'privacy_last_updated';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +41,7 @@ class LegalPageScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _LastUpdatedBanner(labelKey: lastUpdatedKey),
+            LastUpdatedBanner(text: lastUpdatedKey.tr()),
             Gap(14.h),
             ...sections.map(
               (section) => Padding(
@@ -60,39 +56,6 @@ class LegalPageScreen extends StatelessWidget {
   }
 }
 
-/// شريط صغير فوق فيه تاريخ آخر تحديث للنص
-class _LastUpdatedBanner extends StatelessWidget {
-  final String labelKey;
-
-  const _LastUpdatedBanner({required this.labelKey});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: AppColors.secondaryColor,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, size: 18.sp, color: AppColors.primaryColor),
-          Gap(10.w),
-          Expanded(
-            child: LocalizedLabel(
-              text: labelKey,
-              maxLines: 2,
-              style: TextStyles.darkRegular12.copyWith(
-                color: AppColors.primaryColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// قسم واحد: عنوان وتحته النص
 class _SectionCard extends StatelessWidget {
   final LegalSection section;
@@ -101,20 +64,7 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: AppColors.whiteColor,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+    return LegalCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
