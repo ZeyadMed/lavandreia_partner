@@ -81,7 +81,6 @@ class _AccreditedDriversView extends StatelessWidget {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: _onUnaccreditStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         appBar: const CustomAppBar(title: 'accredited_drivers'),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: AppColors.primaryColor,

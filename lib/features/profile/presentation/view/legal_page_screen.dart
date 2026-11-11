@@ -34,7 +34,6 @@ class LegalPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       appBar: CustomAppBar(title: titleKey),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 28.h),

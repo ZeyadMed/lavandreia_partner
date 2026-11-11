@@ -22,7 +22,7 @@ mixin AppThemeData on ThemeData {
       outlineVariant: Colors.blueAccent,
       onInverseSurface: Colors.grey[200],
     ),
-    scaffoldBackgroundColor: AppColors.secondaryColor,
+    scaffoldBackgroundColor: AppColors.scaffoldBackgroundColor,
     appBarTheme: AppBarTheme(
       color: Colors.white,
       titleTextStyle: AppTextTheme.headlineLarge,

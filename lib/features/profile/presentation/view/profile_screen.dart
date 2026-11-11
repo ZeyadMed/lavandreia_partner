@@ -115,7 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       body: BlocBuilder<ProfileCubit, BaseState<PartnerProfile>>(
         bloc: _profileCubit,
         // بنحتفظ بالبيانات القديمة وهي بتتحدث عشان الصفحة مارجعش فاضية

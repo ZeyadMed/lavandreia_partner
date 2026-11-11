@@ -179,7 +179,6 @@ class _EditLaundryScreenState extends State<EditLaundryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       appBar: const CustomAppBar(title: 'edit_laundry_info'),
       body: Form(
         key: _formKey,

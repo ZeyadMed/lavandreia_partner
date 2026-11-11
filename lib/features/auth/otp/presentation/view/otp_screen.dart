@@ -112,7 +112,6 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       body: Padding(
         padding: const EdgeInsets.all(25.0),
         child: Column(

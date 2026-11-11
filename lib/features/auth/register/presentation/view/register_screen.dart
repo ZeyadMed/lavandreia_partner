@@ -6,7 +6,6 @@ import 'package:lavanderia_partner/core/extensions/context_extension.dart';
 import 'package:lavanderia_partner/core/http/failure.dart';
 import 'package:lavanderia_partner/core/router/app_router.dart';
 import 'package:lavanderia_partner/core/service_locator/service_locator.dart';
-import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/features/auth/register/data/models/register_data.dart';
 import 'package:lavanderia_partner/features/auth/register/data/register_data_source.dart';
 import 'package:lavanderia_partner/features/auth/register/presentation/view/steps/laundry_info_step.dart';
@@ -97,7 +96,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!didPop) _back();
       },
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: Column(
           children: [
             RegisterStepHeader(

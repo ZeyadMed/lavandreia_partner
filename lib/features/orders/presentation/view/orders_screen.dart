@@ -117,7 +117,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       body: BlocBuilder<OrdersCubit, BaseState<PartnerOrder>>(
         bloc: _cubit,
         builder: (context, state) => Column(

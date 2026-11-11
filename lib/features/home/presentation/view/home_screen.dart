@@ -57,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       body: Column(
         children: [
           BlocBuilder<ProfileCubit, BaseState<PartnerProfile>>(

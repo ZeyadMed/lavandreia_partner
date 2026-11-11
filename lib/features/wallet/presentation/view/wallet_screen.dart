@@ -45,7 +45,6 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.semiWhiteColor3,
       appBar: const CustomAppBar(title: 'my_wallet'),
       body: BlocBuilder<WalletTransactionsCubit, BaseState<WalletTransaction>>(
         bloc: _transactionsCubit,

@@ -195,7 +195,6 @@ class _OrderAdjustmentScreenState extends State<OrderAdjustmentScreen> {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: _onSubmitStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         appBar: const CustomAppBar(title: 'adjust_order'),
         body: Column(
           children: [

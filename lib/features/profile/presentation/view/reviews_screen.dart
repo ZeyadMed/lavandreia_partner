@@ -25,7 +25,6 @@ class ReviewsScreen extends StatelessWidget {
         ..initPagination()
         ..fetch(page: 1),
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         appBar: const CustomAppBar(title: 'my_reviews'),
         body: BlocBuilder<ReviewsCubit, BaseState<LaundryReview>>(
           builder: (context, state) => _buildBody(context, state),

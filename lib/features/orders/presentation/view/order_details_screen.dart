@@ -212,7 +212,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           ];
 
           return Scaffold(
-            backgroundColor: AppColors.semiWhiteColor3,
             body: Column(
               children: [
                 _DetailsHeader(order: order),

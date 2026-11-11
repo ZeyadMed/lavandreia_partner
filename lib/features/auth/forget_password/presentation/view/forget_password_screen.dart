@@ -70,7 +70,6 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       body: Padding(
         padding: const EdgeInsets.all(25.0),
         child: Form(

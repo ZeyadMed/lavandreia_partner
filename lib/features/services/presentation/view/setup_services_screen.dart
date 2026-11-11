@@ -99,7 +99,6 @@ class _SetupServicesViewState extends State<_SetupServicesView> {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: _onSaveStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.secondaryColor,
         body: Column(
           children: [
             const _SetupHeader(),

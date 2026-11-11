@@ -187,7 +187,6 @@ class _WorkingHoursViewState extends State<_WorkingHoursView> {
           if (!didPop) _confirmLeave();
         },
         child: Scaffold(
-          backgroundColor: AppColors.semiWhiteColor3,
           appBar: const CustomAppBar(title: 'working_hours'),
           // شريط الحفظ جوه Column مش bottomNavigationBar، لأن الـ Center اللي في
           // CustomButton بيتمد لطول الشاشة هناك والـ SnackBar بيطلع بره الشاشة

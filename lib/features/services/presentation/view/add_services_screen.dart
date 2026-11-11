@@ -105,7 +105,6 @@ class _AddServicesViewState extends State<_AddServicesView> {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: _onSubmitStateChanged,
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         appBar: const CustomAppBar(title: 'add_service'),
         body: BlocBuilder<ServicesCubit, BaseState<ServiceCategory>>(
           builder: (context, state) {

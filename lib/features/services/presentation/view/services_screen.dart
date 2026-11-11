@@ -232,7 +232,6 @@ class _ServicesViewState extends State<_ServicesView> {
           if (!didPop) _exitSelection();
         },
         child: Scaffold(
-          backgroundColor: AppColors.semiWhiteColor3,
           body: BlocBuilder<MyServicesCubit, BaseState<MyServiceItem>>(
             builder: (context, state) => Column(
               children: [

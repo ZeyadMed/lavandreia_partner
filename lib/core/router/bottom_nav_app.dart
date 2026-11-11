@@ -129,7 +129,7 @@ class _BottomNavAppState extends State<BottomNavApp> {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final Color scaffoldColor = isDarkMode
         ? const Color(0xFF111827)
-        : AppColors.backgroundColor;
+        : AppColors.scaffoldBackgroundColor;
 
     final Color navBarColor = isDarkMode
         ? const Color(0xFF111827)

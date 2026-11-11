@@ -110,7 +110,6 @@ class MyApp extends StatelessWidget {
                       return MediaQuery(
                         data: media,
                         child: Scaffold(
-                          backgroundColor: AppColors.whiteColor,
                           body: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisAlignment: MainAxisAlignment.center,

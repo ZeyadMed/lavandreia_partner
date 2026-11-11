@@ -25,7 +25,6 @@ class SupportScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => SupportContactsCubit(getIt<AppInfoDataSource>())..fetch(),
       child: Scaffold(
-        backgroundColor: AppColors.semiWhiteColor3,
         appBar: const CustomAppBar(title: 'support_and_help'),
         body: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 28.h),

@@ -96,7 +96,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.secondaryColor,
       // سكرول عشان خانات الكود وكلمة المرور ماتتغطاش لما الكيبورد يفتح
       body: Center(
         child: SingleChildScrollView(
