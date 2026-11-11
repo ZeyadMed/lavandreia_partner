@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,8 +14,9 @@ import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart'
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// كارت عرض دليفري واحد: الاسم وزرار الاتصال، وتحتهم نوع المركبة وبعده عن
-/// المغسلة والوقت المتوقع لوصوله، وبعدهم المغاسل اللي معتمداه،
+/// كارت عرض دليفري واحد: صورته واسمه وتحته ماركة وموديل وسنة مركبته وزرار
+/// الاتصال، وتحتهم نوع المركبة وبعده عن المغسلة والوقت المتوقع لوصوله،
+/// وبعدهم المغاسل اللي معتمداه،
 /// وتحت خالص زرار القبول والرفض
 /// من غير [onApprove] (الدليفري اللي اتوافق عليه) بيظهر [trailing] بدل الزراير
 class DriverOfferTile extends StatelessWidget {
@@ -50,6 +52,7 @@ class DriverOfferTile extends StatelessWidget {
     final vehicleLabel = vehicle == VehicleKind.other
         ? request.vehicleType
         : vehicle.labelKey.tr();
+    final vehicleDescription = request.vehicleDescription;
     final distance = request.distanceKm;
     final eta = request.etaMinutes;
 
@@ -70,25 +73,31 @@ class DriverOfferTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 44.w,
-                height: 44.w,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  vehicle.icon,
-                  color: AppColors.primaryColor,
-                  size: 22.sp,
-                ),
+              _DriverPhoto(
+                imageUrl: request.driverImageUrl,
+                fallbackIcon: vehicle.icon,
               ),
               Gap(12.w),
               Expanded(
-                child: Label(
-                  text: request.driverName,
-                  maxLines: 1,
-                  style: TextStyles.boldStyle(15, weight: FontWeight.w700),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Label(
+                      text: request.driverName,
+                      maxLines: 1,
+                      style: TextStyles.boldStyle(15, weight: FontWeight.w700),
+                    ),
+                    if (vehicleDescription.isNotEmpty) ...[
+                      Gap(3.h),
+                      Label(
+                        text: vehicleDescription,
+                        maxLines: 1,
+                        style: TextStyles.darkRegular12.copyWith(
+                          color: AppColors.greyColor4,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (isClosest) ...[Gap(6.w), const _ClosestChip()],
@@ -189,6 +198,56 @@ class DriverOfferTile extends StatelessWidget {
     }
     final text = km >= 10 ? '${km.round()}' : km.toStringAsFixed(1);
     return 'offer_distance_km'.tr(args: [text]);
+  }
+}
+
+/// صورة الدليفري، والضغط عليها بيفتحها بالحجم الكامل عشان المغسلة تتعرف عليه
+/// لو مفيش صورة أو فشلت بتظهر أيقونة مركبته
+class _DriverPhoto extends StatelessWidget {
+  final String? imageUrl;
+  final IconData fallbackIcon;
+
+  const _DriverPhoto({required this.imageUrl, required this.fallbackIcon});
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Container(
+      color: AppColors.primaryColor.withValues(alpha: 0.1),
+      child: Icon(fallbackIcon, color: AppColors.primaryColor, size: 24.sp),
+    );
+    final url = imageUrl;
+
+    return GestureDetector(
+      onTap: url == null ? null : () => _showFull(context, url),
+      child: ClipOval(
+        child: SizedBox(
+          width: 52.w,
+          height: 52.w,
+          child: url == null
+              ? placeholder
+              : CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.cover,
+                  placeholder: (_, _) => placeholder,
+                  errorWidget: (_, _, _) => placeholder,
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// الصورة بالحجم الكامل وتتكبر بالصوابع
+  void _showFull(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.all(16.w),
+        child: InteractiveViewer(
+          child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+        ),
+      ),
+    );
   }
 }
 

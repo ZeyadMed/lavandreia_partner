@@ -11,8 +11,18 @@ class TripRequest {
   final String driverName;
   final String driverPhone;
 
+  /// صورة الدليفري الشخصية، null لو مارفعش صورة
+  final String? driverImageUrl;
+
   /// زي ما السيرفر بيبعته، زي Motorcycle أو Car
   final String vehicleType;
+
+  /// ماركة المركبة زي Kia، وموديلها زي Picanto، فاضيين لو مش معروفين
+  final String vehicleMake;
+  final String vehicleModel;
+
+  /// سنة الصنع، null لو مش معروفة
+  final int? vehicleYear;
 
   /// بعد الدليفري عن المغسلة بالكيلومتر لو معروف
   final double? distanceKm;
@@ -31,7 +41,11 @@ class TripRequest {
     this.deliveryTripId = 0,
     this.driverId,
     this.driverPhone = '',
+    this.driverImageUrl,
     this.vehicleType = '',
+    this.vehicleMake = '',
+    this.vehicleModel = '',
+    this.vehicleYear,
     this.distanceKm,
     this.status = '',
     this.createdAt,
@@ -39,10 +53,19 @@ class TripRequest {
   });
 
   /// { "id", "deliveryTripId", "driverId", "driverName", "driverPhoneNumber",
-  /// "distanceKm", "status", "createdAt", "vehicleType", "driverAccreditedBy" }
+  /// "driverProfileImageUrl", "vehicleType", "vehicleMake", "vehicleModel",
+  /// "vehicleYear", "distanceKm", "status", "createdAt", "driverAccreditedBy" }
   /// بيانات الدليفري ممكن تيجي جوه "driver" بدل ما تبقى في الطلب نفسه
   factory TripRequest.fromJson(Map<String, dynamic> json) {
     final driver = json['driver'] as Map<String, dynamic>? ?? const {};
+    String text(String key, [String? driverKey]) =>
+        '${json[key] ?? driver[driverKey ?? key] ?? ''}'.trim();
+
+    final imageUrl = text('driverProfileImageUrl', 'profileImageUrl');
+    final rawYear = json['vehicleYear'] ?? driver['vehicleYear'];
+    final year = rawYear is num
+        ? rawYear.toInt()
+        : int.tryParse(text('vehicleYear'));
     return TripRequest(
       id: (json['id'] as num? ?? 0).toInt(),
       deliveryTripId: (json['deliveryTripId'] as num? ?? 0).toInt(),
@@ -53,7 +76,11 @@ class TripRequest {
           '',
       driverPhone:
           (json['driverPhoneNumber'] ?? driver['phoneNumber']) as String? ?? '',
-      vehicleType: '${json['vehicleType'] ?? driver['vehicleType'] ?? ''}',
+      driverImageUrl: imageUrl.isEmpty ? null : imageUrl,
+      vehicleType: text('vehicleType'),
+      vehicleMake: text('vehicleMake'),
+      vehicleModel: text('vehicleModel'),
+      vehicleYear: year == null || year <= 0 ? null : year,
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       status: '${json['status'] ?? ''}',
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
@@ -75,6 +102,19 @@ class TripRequest {
   bool get isOpen => !isApproved && !isRejected && !isCancelled;
 
   VehicleKind get vehicleKind => VehicleKind.fromApi(vehicleType);
+
+  /// الماركة والموديل والسنة في سطر واحد زي "Kia Picanto • 2018"
+  /// فاضي لو السيرفر مابعتش حاجة منهم
+  String get vehicleDescription {
+    final name = [
+      vehicleMake,
+      vehicleModel,
+    ].where((part) => part.isNotEmpty).join(' ');
+    return [
+      name,
+      if (vehicleYear != null) '$vehicleYear',
+    ].where((part) => part.isNotEmpty).join(' • ');
+  }
 
   /// الوقت المتوقع لوصوله المغسلة بالدقايق من المسافة وسرعة مركبته
   /// + دقيقتين لحد ما يتحرك، و null لو المسافة مش معروفة
@@ -127,7 +167,11 @@ class TripRequest {
     driverId: driverId,
     driverName: driverName,
     driverPhone: driverPhone,
+    driverImageUrl: driverImageUrl,
     vehicleType: vehicleType,
+    vehicleMake: vehicleMake,
+    vehicleModel: vehicleModel,
+    vehicleYear: vehicleYear,
     distanceKm: distanceKm,
     status: status ?? this.status,
     createdAt: createdAt,

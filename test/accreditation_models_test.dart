@@ -129,6 +129,38 @@ void main() {
       expect(request.driverAccreditedBy.single.laundryId, 7);
     });
 
+    test('fromJson reads the driver photo and vehicle details', () {
+      final request = TripRequest.fromJson({
+        'id': 1,
+        'driverName': 'D',
+        'driverProfileImageUrl': 'https://x/p.jpg',
+        'vehicleType': 'Car',
+        'vehicleMake': 'Kia',
+        'vehicleModel': 'Picanto',
+        'vehicleYear': 2018,
+      });
+      expect(request.driverImageUrl, 'https://x/p.jpg');
+      expect(request.vehicleDescription, 'Kia Picanto • 2018');
+      final approved = request.copyWith(status: 'Approved');
+      expect(approved.driverImageUrl, 'https://x/p.jpg');
+      expect(approved.vehicleDescription, 'Kia Picanto • 2018');
+    });
+
+    test('fromJson reads vehicle details nested under driver', () {
+      final request = TripRequest.fromJson({
+        'id': 1,
+        'driver': {
+          'fullName': 'D',
+          'profileImageUrl': '',
+          'vehicleModel': 'Picanto',
+          'vehicleYear': 0,
+        },
+      });
+      expect(request.driverImageUrl, isNull);
+      expect(request.vehicleYear, isNull);
+      expect(request.vehicleDescription, 'Picanto');
+    });
+
     test('copyWith(status) keeps the accreditations', () {
       final request = _request(1, accreditedBy: [_mine, _other]);
       final cancelled = request.copyWith(status: 'Cancelled');
