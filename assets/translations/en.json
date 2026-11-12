@@ -1,8 +1,10 @@
 {
   "home": "Home",
   "skip": "Skip",
-  "checkInternet": "Please Check internet connections and try again",
-  "noInternet": "No Internet",
+  "checkInternet": "Please check your internet connection and try again",
+  "noInternet": "Connection error!",
+  "retry": "Retry",
+  "stillNoInternet": "Still no internet connection",
   "get_started": "Get Started",
   "continue": "Continue",
   "onboarding_pickup_title": "We Pick Up Your Laundry",
