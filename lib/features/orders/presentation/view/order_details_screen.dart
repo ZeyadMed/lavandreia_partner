@@ -18,6 +18,7 @@ import 'package:lavanderia_partner/features/orders/presentation/view/order_adjus
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_actions_panel.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_timeline.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/widgets/preparation_duration_sheet.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/order_action_cubit.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/order_details_cubit.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/orders_cubit.dart';
@@ -142,6 +143,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     _detailsCubit.refresh();
   }
 
+  /// القبول محتاج مدة التجهيز، فبنسأل عليها الأول
+  Future<void> _accept(PartnerOrder order) async {
+    final minutes = await showPreparationDurationSheet(context);
+    if (minutes == null || !mounted) return;
+    _actionCubit.accept(order, minutes);
+  }
+
   /// القبول بيروح لطلباتي والرفض الليستات بتشيله لوحدها،
   /// والباقي بيفضل في الصفحة ويجيب الطلب من جديد
   void _onActionStateChanged(
@@ -255,7 +263,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               loadingAction: state.isLoading
                                   ? _actionCubit.pendingAction
                                   : null,
-                              onAccept: () => _actionCubit.accept(order),
+                              onAccept: () => _accept(order),
                               onReject: () => _actionCubit.reject(order),
                               onConfirmPickup: () => _confirmTripOtp(
                                 order.pickupTrip,

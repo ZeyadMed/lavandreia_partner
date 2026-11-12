@@ -3,6 +3,7 @@
 library;
 
 import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
+import 'package:lavanderia_partner/features/trips/data/models/driver_stats.dart';
 
 /// نفس enum DeliveryTripType في الباك إند
 enum DeliveryTripType {
@@ -61,6 +62,18 @@ class DeliveryTrip {
   final String driverName;
   final String driverPhone;
 
+  /// صورة الدليفري المتعيّن، null لو مارفعش صورة
+  final String? driverImageUrl;
+
+  /// نوع مركبته زي ما السيرفر بيبعته، وماركتها وموديلها وسنتها
+  final String vehicleType;
+  final String vehicleMake;
+  final String vehicleModel;
+  final int? vehicleYear;
+
+  /// تقييمه وعدد رحلاته ومن إمتى على التطبيق
+  final DriverStats driverStats;
+
   /// صور الهدوم اللي الدليفري رفعها وهو بيستلم من العميل
   final List<String> photoUrls;
 
@@ -96,6 +109,12 @@ class DeliveryTrip {
     this.driverId,
     this.driverName = '',
     this.driverPhone = '',
+    this.driverImageUrl,
+    this.vehicleType = '',
+    this.vehicleMake = '',
+    this.vehicleModel = '',
+    this.vehicleYear,
+    this.driverStats = const DriverStats(),
     this.photoUrls = const [],
     this.failureReason = '',
     this.failureNote = '',
@@ -111,6 +130,10 @@ class DeliveryTrip {
   /// الدليفري بيتعيّن على الرحلة بس لما المغسلة توافق على طلبه
   bool get hasDriver => driverId != null || driverName.isNotEmpty;
 
+  /// زي "Kia Picanto • 2018"، فاضي لو السيرفر مابعتش حاجة منهم
+  String get vehicleDescription =>
+      describeVehicle(vehicleMake, vehicleModel, vehicleYear);
+
   /// الدليفري وصل المغسلة ومستنيها تدخل الكود اللي معاه
   /// قبل كده الدليفري لسه في الطريق، فمفيش زرار تأكيد
   bool get needsLaundryConfirmation =>
@@ -119,11 +142,15 @@ class DeliveryTrip {
   /// { "id", "orderId", "type", "driverId", "driverName", "driverPhoneNumber",
   /// "fee", "isAwaitingConfirmation", "awaitingConfirmationBy", "isConfirmed",
   /// "isHandedOver", "isClosed", "photoUrls", "failureReason", "failureNote",
-  /// "pendingRequestsCount", "driverAccreditedBy", .. }
+  /// "pendingRequestsCount", "driverAccreditedBy", "driverProfileImageUrl",
+  /// "vehicleType", "vehicleMake", "vehicleModel", "vehicleYear",
+  /// "driverAverageRating", "driverReviewsCount", "driverTotalTrips",
+  /// "driverJoinedAt", .. }
   factory DeliveryTrip.fromJson(
     Map<String, dynamic> json, {
     required DeliveryTripType type,
   }) {
+    final vehicle = DriverVehicleJson.read(json);
     return DeliveryTrip(
       id: (json['id'] as num? ?? 0).toInt(),
       type: DeliveryTripType.fromApi(json['type']) ?? type,
@@ -132,6 +159,12 @@ class DeliveryTrip {
       driverId: json['driverId'] as int?,
       driverName: json['driverName'] as String? ?? '',
       driverPhone: json['driverPhoneNumber'] as String? ?? '',
+      driverImageUrl: vehicle.imageUrlOrNull,
+      vehicleType: vehicle.type,
+      vehicleMake: vehicle.make,
+      vehicleModel: vehicle.model,
+      vehicleYear: vehicle.year,
+      driverStats: DriverStats.fromJson(json),
       photoUrls: [
         for (final url in json['photoUrls'] as List? ?? const []) '$url',
       ],
@@ -160,6 +193,12 @@ class DeliveryTrip {
     driverId: driverId,
     driverName: driverName,
     driverPhone: driverPhone,
+    driverImageUrl: driverImageUrl,
+    vehicleType: vehicleType,
+    vehicleMake: vehicleMake,
+    vehicleModel: vehicleModel,
+    vehicleYear: vehicleYear,
+    driverStats: driverStats,
     photoUrls: photoUrls,
     failureReason: failureReason,
     failureNote: failureNote,

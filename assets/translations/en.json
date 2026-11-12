@@ -461,6 +461,8 @@
   "dropoff_driver_requests": "Delivery driver requests",
   "no_driver_requests_yet": "No driver has requested this trip yet",
   "driver_requests_load_failed": "Couldn't load driver requests",
+  "searching_nearby_drivers": "Searching for nearby drivers",
+  "searching_nearby_drivers_hint": "Driver requests will appear here as soon as they arrive",
   "approve": "Approve",
   "driver_approved": "Driver selected",
   "driver_assigned": "Selected",
@@ -534,6 +536,13 @@
   "offer_distance_m": "{} m away",
   "offer_eta": "Arrives in ~{} min",
   "offer_closest": "Closest",
+  "driver_new": "New",
+  "driver_trips_count": {
+    "zero": "No trips",
+    "one": "1 trip",
+    "other": "{} trips"
+  },
+  "driver_member_since": "Member since {}",
   "trip_type_pickup": "Pickup",
   "trip_type_dropoff": "Delivery",
   "vehicle_car": "Car",
@@ -563,5 +572,28 @@
   "trip_finished_dropoff_title": "Order delivered to the customer",
   "accredit_trip_driver_message": "Accredit {}? Accredited drivers stand out in your future trip requests",
   "later": "Later",
-  "realtime_delivered_accredit_driver": "Order {} was delivered, you can accredit the driver from the order details"
+  "realtime_delivered_accredit_driver": "Order {} was delivered, you can accredit the driver from the order details",
+  "days_count": {
+    "zero": "Less than a day",
+    "one": "1 day",
+    "other": "{} days"
+  },
+  "minutes_count": {
+    "zero": "Less than a minute",
+    "one": "1 minute",
+    "other": "{} minutes"
+  },
+  "and_separator": "and",
+  "choose_preparation_duration": "Preparation time",
+  "preparation_duration_hint": "How long the laundry needs to prepare the order once the clothes are received. The customer sees it as the ready time",
+  "other_duration": "Other",
+  "unit_hours": "Hours",
+  "unit_days": "Days",
+  "enter_valid_preparation_duration": "Choose a valid preparation time (up to 30 days)",
+  "confirm_accept": "Confirm acceptance",
+  "preparation_duration": "Preparation time",
+  "promised_ready_at": "Ready by",
+  "time_remaining": "Time remaining",
+  "ready_in": "{} left",
+  "overdue_by": "{} overdue"
 }

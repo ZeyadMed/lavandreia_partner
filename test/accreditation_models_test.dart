@@ -3,6 +3,7 @@ import 'package:lavanderia_partner/features/accredited_drivers/data/models/accre
 import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
+import 'package:lavanderia_partner/features/trips/data/models/driver_stats.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 
 const _mine = AccreditingLaundry(laundryId: 1, laundryName: 'My Laundry');
@@ -54,8 +55,9 @@ PartnerOrder _order(
 
 void main() {
   group('PartnerOrder.finishedTrips', () {
-    List<int> finishedIds(PartnerOrder order) =>
-        [for (final trip in order.finishedTrips) trip.id];
+    List<int> finishedIds(PartnerOrder order) => [
+      for (final trip in order.finishedTrips) trip.id,
+    ];
 
     test('pickup is not finished while the driver is still on the way', () {
       expect(finishedIds(_order(PartnerOrderStatus.awaitingPickup)), isEmpty);
@@ -76,7 +78,9 @@ void main() {
 
     test('dropoff finishes once the customer receives the order', () {
       expect(
-        finishedIds(_order(PartnerOrderStatus.delivered, dropoffTrip: _dropoff)),
+        finishedIds(
+          _order(PartnerOrderStatus.delivered, dropoffTrip: _dropoff),
+        ),
         [1, 2],
       );
     });
@@ -84,7 +88,9 @@ void main() {
     test('trips without a driver are skipped', () {
       const noDriver = DeliveryTrip(id: 3, type: DeliveryTripType.pickup);
       expect(
-        finishedIds(_order(PartnerOrderStatus.inProgress, pickupTrip: noDriver)),
+        finishedIds(
+          _order(PartnerOrderStatus.inProgress, pickupTrip: noDriver),
+        ),
         isEmpty,
       );
     });
@@ -204,7 +210,11 @@ void main() {
     }, type: DeliveryTripType.pickup);
     expect(trip.driverAccreditedBy.single.laundryId, 1);
     expect(
-      trip.copyWith(pendingRequestsCount: 3).driverAccreditedBy.single.laundryId,
+      trip
+          .copyWith(pendingRequestsCount: 3)
+          .driverAccreditedBy
+          .single
+          .laundryId,
       1,
     );
 
@@ -224,5 +234,90 @@ void main() {
     });
     expect(driver.profileImageUrl, isNull);
     expect(driver.accreditedAt, DateTime.utc(2026, 10, 13, 8, 30).toLocal());
+  });
+
+  group('DriverStats', () {
+    test('reads the flat driver fields', () {
+      final stats = DriverStats.fromJson({
+        'driverAverageRating': 4.75,
+        'driverReviewsCount': 23,
+        'driverTotalTrips': 120,
+        'driverJoinedAt': '2025-03-04T10:00:00Z',
+      });
+      expect(stats.rating, 4.75);
+      expect(stats.reviewsCount, 23);
+      expect(stats.totalTrips, 120);
+      expect(stats.joinedAt, DateTime.utc(2025, 3, 4, 10));
+      expect(stats.isEmpty, isFalse);
+      expect(stats.isNew, isFalse);
+    });
+
+    test('reads the fields nested under driver', () {
+      final stats = DriverStats.fromJson({
+        'driver': {
+          'averageRating': 5,
+          'reviewsCount': 2,
+          'completedTripsCount': 9,
+          'createdAt': '2024-12-01T00:00:00Z',
+        },
+      });
+      expect(stats.rating, 5.0);
+      expect(stats.reviewsCount, 2);
+      expect(stats.totalTrips, 9);
+      expect(stats.joinedAt, DateTime.utc(2024, 12));
+    });
+
+    test('the request createdAt is not the driver join date', () {
+      final stats = DriverStats.fromJson({'createdAt': '2026-11-09T09:18:15Z'});
+      expect(stats.joinedAt, isNull);
+      expect(stats.isEmpty, isTrue);
+    });
+
+    test('a driver with no reviews is new', () {
+      final stats = DriverStats.fromJson({
+        'driverAverageRating': 0,
+        'driverReviewsCount': 0,
+      });
+      expect(stats.hasRating, isTrue);
+      expect(stats.isNew, isTrue);
+    });
+  });
+
+  test('TripRequest keeps the driver stats through fromJson and copyWith', () {
+    final request = TripRequest.fromJson({
+      'id': 1,
+      'driverName': 'D',
+      'driverTotalTrips': 40,
+      'driverAverageRating': 4.2,
+    });
+    expect(request.driverStats.totalTrips, 40);
+    final updated = request.copyWith(status: 'Approved');
+    expect(updated.driverStats.totalTrips, 40);
+    expect(updated.driverStats.rating, 4.2);
+  });
+
+  test('DeliveryTrip reads the assigned driver photo, vehicle and stats', () {
+    final trip = DeliveryTrip.fromJson({
+      'id': 7,
+      'driverId': 15,
+      'driverName': 'D',
+      'driverProfileImageUrl': 'https://x/15.jpg',
+      'vehicleType': 'Car',
+      'vehicleMake': 'Kia',
+      'vehicleModel': 'Picanto',
+      'vehicleYear': 2018,
+      'driverReviewsCount': 3,
+      'driverAverageRating': 4.5,
+      'driverJoinedAt': '2025-01-01T00:00:00Z',
+    }, type: DeliveryTripType.pickup);
+    expect(trip.driverImageUrl, 'https://x/15.jpg');
+    expect(trip.vehicleType, 'Car');
+    expect(trip.vehicleDescription, 'Kia Picanto • 2018');
+    expect(trip.driverStats.reviewsCount, 3);
+
+    final copied = trip.copyWith(pendingRequestsCount: 1);
+    expect(copied.vehicleDescription, 'Kia Picanto • 2018');
+    expect(copied.driverStats.rating, 4.5);
+    expect(copied.driverImageUrl, 'https://x/15.jpg');
   });
 }

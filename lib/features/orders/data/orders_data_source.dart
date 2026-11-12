@@ -35,9 +35,15 @@ class OrdersDataSource {
     );
   }
 
-  Future<Either<Failure, void>> acceptOrder(int orderId) {
+  /// body: { "preparationDurationMinutes": 240 } من 1 لحد 43200 (30 يوم)،
+  /// وأي قيمة برّه كده السيرفر بيرجع 400 برسالة عربي
+  Future<Either<Failure, void>> acceptOrder(
+    int orderId, {
+    required int preparationDurationMinutes,
+  }) {
     return _genericDataSource.postData<Null>(
       endpoint: Endpoints.acceptOrder(orderId),
+      data: {'preparationDurationMinutes': preparationDurationMinutes},
     );
   }
 

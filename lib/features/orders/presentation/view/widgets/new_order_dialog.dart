@@ -14,6 +14,7 @@ import 'package:lavanderia_partner/features/orders/data/models/partner_order.dar
 import 'package:lavanderia_partner/features/orders/data/orders_data_source.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/order_details_screen.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_actions_panel.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/widgets/preparation_duration_sheet.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view_model/order_action_cubit.dart';
 
 /// بوب أب الطلب الجديد اللي بيظهر لحظياً مع OrderCreated
@@ -64,6 +65,13 @@ class _NewOrderDialogState extends State<_NewOrderDialog> {
         (failure is ServerFailure || failure is UnknownFailure)) {
       context.showErrorMessage(failure!.message);
     }
+  }
+
+  /// القبول محتاج مدة التجهيز، فبنسأل عليها الأول
+  Future<void> _accept(PartnerOrder order) async {
+    final minutes = await showPreparationDurationSheet(context);
+    if (minutes == null || !mounted) return;
+    _actionCubit.accept(order, minutes);
   }
 
   void _openDetails() {
@@ -141,7 +149,7 @@ class _NewOrderDialogState extends State<_NewOrderDialog> {
                     child: OrderActionButton(
                       labelKey: 'accept_order',
                       isLoading: loadingAction == OrderAction.accept,
-                      onTap: isBusy ? null : () => _actionCubit.accept(order),
+                      onTap: isBusy ? null : () => _accept(order),
                     ),
                   ),
                   Gap(10.w),

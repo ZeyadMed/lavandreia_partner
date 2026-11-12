@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -9,6 +10,9 @@ import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/driver_accreditation_badges.dart';
 import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
 import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart';
+import 'package:lavanderia_partner/features/trips/data/models/driver_stats.dart';
+import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_profile_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// كارت الدليفري المتعيّن على الرحلة بعد ما المغسلة وافقت عليه
@@ -30,7 +34,7 @@ class AssignedDriverCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DriverTile(name: trip.driverName, phone: trip.driverPhone),
+          DriverTile.fromTrip(trip),
           Gap(10.h),
           DriverAccreditationBadges(
             laundries: trip.driverAccreditedBy,
@@ -117,13 +121,19 @@ class TripPhotosStrip extends StatelessWidget {
   }
 }
 
-/// سطر الدليفري: الأفاتار والاسم وتحته التليفون ونوع العربية
+/// سطر الدليفري: صورته واسمه وتحته التليفون ونوع المركبة، وبعدهم ماركتها
+/// وموديلها، وتحت السطر تقييمه وعدد رحلاته ومن إمتى على التطبيق
 /// الضغط على أيقونة التليفون بيفتح الاتصال
 /// [trailing] للزراير اللي على الطرف التاني زي القبول والرفض
 class DriverTile extends StatelessWidget {
   final String name;
   final String phone;
   final String vehicleType;
+
+  /// زي "Kia Picanto • 2018"
+  final String vehicleDescription;
+  final String? imageUrl;
+  final DriverStats stats;
   final Widget? trailing;
 
   const DriverTile({
@@ -131,64 +141,92 @@ class DriverTile extends StatelessWidget {
     required this.name,
     this.phone = '',
     this.vehicleType = '',
+    this.vehicleDescription = '',
+    this.imageUrl,
+    this.stats = const DriverStats(),
     this.trailing,
   });
 
+  /// الدليفري المتعيّن على الرحلة بكل بياناته
+  DriverTile.fromTrip(DeliveryTrip trip, {Key? key, Widget? trailing})
+    : this(
+        key: key,
+        name: trip.driverName,
+        phone: trip.driverPhone,
+        vehicleType: trip.vehicleType,
+        vehicleDescription: trip.vehicleDescription,
+        imageUrl: trip.driverImageUrl,
+        stats: trip.driverStats,
+        trailing: trailing,
+      );
+
   @override
   Widget build(BuildContext context) {
+    final vehicle = VehicleKind.fromApi(vehicleType);
+    final vehicleLabel = vehicle == VehicleKind.other
+        ? vehicleType
+        : vehicle.labelKey.tr();
     final subtitle = [
       phone.forceLtr,
-      vehicleType,
+      vehicleLabel,
     ].where((text) => text.isNotEmpty);
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: 42.w,
-          height: 42.w,
-          decoration: BoxDecoration(
-            color: AppColors.primaryColor.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.delivery_dining_rounded,
-            color: AppColors.primaryColor,
-            size: 22.sp,
-          ),
-        ),
-        Gap(12.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Label(
-                text: name,
-                maxLines: 1,
-                style: TextStyles.boldStyle(15, weight: FontWeight.w700),
-              ),
-              if (subtitle.isNotEmpty) ...[
-                Gap(3.h),
-                Label(
-                  text: subtitle.join(' • '),
-                  maxLines: 1,
-                  style: TextStyles.darkRegular12.copyWith(
-                    color: AppColors.greyColor4,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (phone.isNotEmpty)
-          IconButton(
-            onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
-            icon: Icon(
-              Icons.phone_rounded,
-              size: 20.sp,
-              color: AppColors.primaryColor,
+        Row(
+          children: [
+            DriverPhoto(
+              imageUrl: imageUrl,
+              fallbackIcon: vehicle.icon,
+              size: 46,
             ),
-          ),
-        ?trailing,
+            Gap(12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Label(
+                    text: name,
+                    maxLines: 1,
+                    style: TextStyles.boldStyle(15, weight: FontWeight.w700),
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    Gap(3.h),
+                    Label(
+                      text: subtitle.join(' • '),
+                      maxLines: 1,
+                      style: TextStyles.darkRegular12.copyWith(
+                        color: AppColors.greyColor4,
+                      ),
+                    ),
+                  ],
+                  if (vehicleDescription.isNotEmpty) ...[
+                    Gap(2.h),
+                    Label(
+                      text: vehicleDescription,
+                      maxLines: 1,
+                      style: TextStyles.darkRegular12.copyWith(
+                        color: AppColors.greyColor4,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (phone.isNotEmpty)
+              IconButton(
+                onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                icon: Icon(
+                  Icons.phone_rounded,
+                  size: 20.sp,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+            ?trailing,
+          ],
+        ),
+        if (!stats.isEmpty) ...[Gap(10.h), DriverStatsRow(stats: stats)],
       ],
     );
   }

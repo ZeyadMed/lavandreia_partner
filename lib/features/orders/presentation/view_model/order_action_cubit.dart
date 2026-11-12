@@ -16,7 +16,7 @@ enum OrderAction {
   confirmReturn,
 }
 
-/// الأكشنز اللي المغسلة بتعملها على الطلب من غير body
+/// الأكشنز اللي المغسلة بتعملها على الطلب (القبول بس اللي ليه body)
 /// لما الريكوست ينجح state.data بيبقى الطلب بحالته الجديدة
 class OrderActionCubit extends Cubit<BaseState<PartnerOrder>> {
   final OrdersDataSource _dataSource;
@@ -26,10 +26,17 @@ class OrderActionCubit extends Cubit<BaseState<PartnerOrder>> {
 
   OrderActionCubit(this._dataSource) : super(const BaseState<PartnerOrder>());
 
-  Future<void> accept(PartnerOrder order) => _run(
+  /// [preparationMinutes] مدة التجهيز اللي المغسلة اختارتها من شيت القبول
+  Future<void> accept(PartnerOrder order, int preparationMinutes) => _run(
     OrderAction.accept,
-    () => _dataSource.acceptOrder(order.id),
-    order.copyWith(status: PartnerOrderStatus.awaitingPickup),
+    () => _dataSource.acceptOrder(
+      order.id,
+      preparationDurationMinutes: preparationMinutes,
+    ),
+    order.copyWith(
+      status: PartnerOrderStatus.awaitingPickup,
+      preparationDurationMinutes: preparationMinutes,
+    ),
   );
 
   Future<void> reject(PartnerOrder order) => _run(

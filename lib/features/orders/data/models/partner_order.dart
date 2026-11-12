@@ -295,6 +295,15 @@ class PartnerOrder {
   /// وقت التسليم المتوقع بالساعات
   final int estimatedHours;
 
+  /// مدة التجهيز اللي المغسلة اختارتها وهي بتقبل، null قبل القبول
+  final int? preparationDurationMinutes;
+
+  /// لحظة ما المغسلة أكّدت استلام الهدوم بالكود، null قبلها
+  final DateTime? laundryReceivedAt;
+
+  /// موعد الجاهزية = الاستلام + مدة التجهيز، null لحد ما المغسلة تستلم
+  final DateTime? promisedReadyAt;
+
   const PartnerOrder({
     this.id = 0,
     this.laundryId = 0,
@@ -317,6 +326,9 @@ class PartnerOrder {
     this.pendingAdjustment,
     this.distanceKm = 0,
     this.estimatedHours = 0,
+    this.preparationDurationMinutes,
+    this.laundryReceivedAt,
+    this.promisedReadyAt,
   });
 
   /// طلب واحد من ريسبونس GET api/laundry/orders
@@ -352,8 +364,43 @@ class PartnerOrder {
       pendingAdjustment: json['pendingAdjustment'] is Map<String, dynamic>
           ? OrderAdjustmentResult.fromJson(json['pendingAdjustment'])
           : null,
+      preparationDurationMinutes: switch (json['preparationDurationMinutes']) {
+        final num minutes when minutes > 0 => minutes.toInt(),
+        _ => null,
+      },
+      laundryReceivedAt: _readUtc(json['laundryReceivedAt']),
+      promisedReadyAt: _readUtc(json['promisedReadyAt']),
     );
   }
+
+  /// الأوقات دي بتيجي ISO UTC (فيها Z)، ولو جت من غير Z بنعتبرها UTC برضه
+  static DateTime? _readUtc(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return null;
+    return parsed.isUtc
+        ? parsed
+        : DateTime.utc(
+            parsed.year,
+            parsed.month,
+            parsed.day,
+            parsed.hour,
+            parsed.minute,
+            parsed.second,
+            parsed.millisecond,
+            parsed.microsecond,
+          );
+  }
+
+  /// المغسلة بتجهّز الطلب دلوقتي: الهدوم عندها ولسه ماعلّمتش إنه جاهز.
+  /// العدّاد بيشتغل في المرحلة دي بس ولو موعد الجاهزية وصل من السيرفر
+  bool get isPreparing =>
+      promisedReadyAt != null &&
+      const {
+        PartnerOrderStatus.atLaundryPendingMatch,
+        PartnerOrderStatus.adjustmentPendingApproval,
+        PartnerOrderStatus.inProgress,
+      }.contains(status);
 
   /// الرحلة بتبقى null لحد ما تتعمل
   static DeliveryTrip? _readTrip(Object? json, DeliveryTripType type) =>
@@ -406,6 +453,7 @@ class PartnerOrder {
     PartnerOrderStatus? status,
     DeliveryTrip? pickupTrip,
     DeliveryTrip? dropoffTrip,
+    int? preparationDurationMinutes,
   }) => PartnerOrder(
     id: id,
     laundryId: laundryId,
@@ -428,6 +476,10 @@ class PartnerOrder {
     pendingAdjustment: pendingAdjustment,
     distanceKm: distanceKm,
     estimatedHours: estimatedHours,
+    preparationDurationMinutes:
+        preparationDurationMinutes ?? this.preparationDurationMinutes,
+    laundryReceivedAt: laundryReceivedAt,
+    promisedReadyAt: promisedReadyAt,
   );
 
   /// إجمالي عدد القطع في الطلب

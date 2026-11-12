@@ -467,6 +467,8 @@
   "dropoff_driver_requests": "طلبات مندوبي التوصيل",
   "no_driver_requests_yet": "لم يطلب أي مندوب هذه الرحلة بعد",
   "driver_requests_load_failed": "تعذر تحميل طلبات المندوبين",
+  "searching_nearby_drivers": "جاري البحث عن مندوبين قريبين منك",
+  "searching_nearby_drivers_hint": "سنُظهر لك طلبات المندوبين هنا فور وصولها",
   "approve": "قبول",
   "driver_approved": "تم اختيار المندوب",
   "driver_assigned": "تم الاختيار",
@@ -546,6 +548,16 @@
   "offer_distance_m": "{} م منك",
   "offer_eta": "يصلك خلال ~{} د",
   "offer_closest": "الأقرب",
+  "driver_new": "جديد",
+  "driver_trips_count": {
+    "zero": "لا توجد رحلات",
+    "one": "رحلة واحدة",
+    "two": "رحلتان",
+    "few": "{} رحلات",
+    "many": "{} رحلة",
+    "other": "{} رحلة"
+  },
+  "driver_member_since": "عضو منذ {}",
   "trip_type_pickup": "استلام",
   "trip_type_dropoff": "توصيل",
   "vehicle_car": "سيارة",
@@ -575,5 +587,34 @@
   "trip_finished_dropoff_title": "تم تسليم الطلب للعميل",
   "accredit_trip_driver_message": "هل تريد اعتماد {}؟ السائقون المعتمدون يظهرون مميزين في طلبات الرحلات القادمة",
   "later": "لاحقًا",
-  "realtime_delivered_accredit_driver": "تم توصيل الطلب {} للعميل، تقدر تعتمد السائق من تفاصيل الطلب"
+  "realtime_delivered_accredit_driver": "تم توصيل الطلب {} للعميل، تقدر تعتمد السائق من تفاصيل الطلب",
+  "days_count": {
+    "zero": "أقل من يوم",
+    "one": "يوم",
+    "two": "يومان",
+    "few": "{} أيام",
+    "many": "{} يوماً",
+    "other": "{} يوم"
+  },
+  "minutes_count": {
+    "zero": "أقل من دقيقة",
+    "one": "دقيقة",
+    "two": "دقيقتان",
+    "few": "{} دقائق",
+    "many": "{} دقيقة",
+    "other": "{} دقيقة"
+  },
+  "and_separator": "و",
+  "choose_preparation_duration": "مدة تجهيز الطلب",
+  "preparation_duration_hint": "الوقت اللي هتحتاجه المغسلة لتجهيز الطلب من لحظة استلام الهدوم، وبيظهر للعميل كموعد جاهزية",
+  "other_duration": "مدة أخرى",
+  "unit_hours": "ساعات",
+  "unit_days": "أيام",
+  "enter_valid_preparation_duration": "اختر مدة تجهيز صحيحة (حتى 30 يوم)",
+  "confirm_accept": "تأكيد القبول",
+  "preparation_duration": "مدة التجهيز",
+  "promised_ready_at": "موعد الجاهزية",
+  "time_remaining": "الوقت المتبقي",
+  "ready_in": "باقي {}",
+  "overdue_by": "متأخر {}"
 }

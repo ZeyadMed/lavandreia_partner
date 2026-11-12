@@ -200,8 +200,11 @@ class OrderStatusHint extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // الـ ellipsis من غير maxLines بيقص النص على سطر واحد،
+                // فبنسيبه يلف على كذا سطر عشان الجملة تبان كاملة
                 LocalizedLabel(
                   text: hintKey,
+                  overflow: TextOverflow.visible,
                   style: TextStyles.boldStyle(
                     13,
                     color: color,
@@ -212,6 +215,7 @@ class OrderStatusHint extends StatelessWidget {
                   Gap(4.h),
                   Label(
                     text: _failureText,
+                    overflow: TextOverflow.visible,
                     style: TextStyles.darkRegular12.copyWith(color: color),
                   ),
                 ],

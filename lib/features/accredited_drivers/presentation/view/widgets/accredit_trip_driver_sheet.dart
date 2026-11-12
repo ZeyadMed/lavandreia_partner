@@ -152,7 +152,7 @@ class _AccreditTripDriverSheetState extends State<_AccreditTripDriverSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DriverTile(name: trip.driverName, phone: trip.driverPhone),
+                DriverTile.fromTrip(trip),
                 Gap(8.h),
                 DriverAccreditationBadges(laundries: trip.driverAccreditedBy),
               ],

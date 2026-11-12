@@ -1,4 +1,5 @@
 import 'package:lavanderia_partner/features/accredited_drivers/data/models/accrediting_laundry.dart';
+import 'package:lavanderia_partner/features/trips/data/models/driver_stats.dart';
 import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
 
 /// طلب دليفري واحد على رحلة، المغسلة بتختار واحد منهم والباقي بيترفض
@@ -35,6 +36,9 @@ class TripRequest {
   /// المغاسل اللي معتمدة الدليفري، فاضية لو محدش معتمده
   final List<AccreditingLaundry> driverAccreditedBy;
 
+  /// تقييمه وعدد رحلاته ومن إمتى على التطبيق
+  final DriverStats driverStats;
+
   const TripRequest({
     required this.id,
     required this.driverName,
@@ -50,22 +54,18 @@ class TripRequest {
     this.status = '',
     this.createdAt,
     this.driverAccreditedBy = const [],
+    this.driverStats = const DriverStats(),
   });
 
   /// { "id", "deliveryTripId", "driverId", "driverName", "driverPhoneNumber",
   /// "driverProfileImageUrl", "vehicleType", "vehicleMake", "vehicleModel",
-  /// "vehicleYear", "distanceKm", "status", "createdAt", "driverAccreditedBy" }
+  /// "vehicleYear", "distanceKm", "status", "createdAt", "driverAccreditedBy",
+  /// "driverAverageRating", "driverReviewsCount", "driverTotalTrips",
+  /// "driverJoinedAt" }
   /// بيانات الدليفري ممكن تيجي جوه "driver" بدل ما تبقى في الطلب نفسه
   factory TripRequest.fromJson(Map<String, dynamic> json) {
-    final driver = json['driver'] as Map<String, dynamic>? ?? const {};
-    String text(String key, [String? driverKey]) =>
-        '${json[key] ?? driver[driverKey ?? key] ?? ''}'.trim();
-
-    final imageUrl = text('driverProfileImageUrl', 'profileImageUrl');
-    final rawYear = json['vehicleYear'] ?? driver['vehicleYear'];
-    final year = rawYear is num
-        ? rawYear.toInt()
-        : int.tryParse(text('vehicleYear'));
+    final driver = nestedDriver(json);
+    final vehicle = DriverVehicleJson.read(json);
     return TripRequest(
       id: (json['id'] as num? ?? 0).toInt(),
       deliveryTripId: (json['deliveryTripId'] as num? ?? 0).toInt(),
@@ -76,17 +76,18 @@ class TripRequest {
           '',
       driverPhone:
           (json['driverPhoneNumber'] ?? driver['phoneNumber']) as String? ?? '',
-      driverImageUrl: imageUrl.isEmpty ? null : imageUrl,
-      vehicleType: text('vehicleType'),
-      vehicleMake: text('vehicleMake'),
-      vehicleModel: text('vehicleModel'),
-      vehicleYear: year == null || year <= 0 ? null : year,
+      driverImageUrl: vehicle.imageUrlOrNull,
+      vehicleType: vehicle.type,
+      vehicleMake: vehicle.make,
+      vehicleModel: vehicle.model,
+      vehicleYear: vehicle.year,
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       status: '${json['status'] ?? ''}',
       createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}'),
       driverAccreditedBy: AccreditingLaundry.listFromJson(
         json['driverAccreditedBy'],
       ),
+      driverStats: DriverStats.fromJson(json),
     );
   }
 
@@ -105,16 +106,8 @@ class TripRequest {
 
   /// الماركة والموديل والسنة في سطر واحد زي "Kia Picanto • 2018"
   /// فاضي لو السيرفر مابعتش حاجة منهم
-  String get vehicleDescription {
-    final name = [
-      vehicleMake,
-      vehicleModel,
-    ].where((part) => part.isNotEmpty).join(' ');
-    return [
-      name,
-      if (vehicleYear != null) '$vehicleYear',
-    ].where((part) => part.isNotEmpty).join(' • ');
-  }
+  String get vehicleDescription =>
+      describeVehicle(vehicleMake, vehicleModel, vehicleYear);
 
   /// الوقت المتوقع لوصوله المغسلة بالدقايق من المسافة وسرعة مركبته
   /// + دقيقتين لحد ما يتحرك، و null لو المسافة مش معروفة
@@ -176,5 +169,6 @@ class TripRequest {
     status: status ?? this.status,
     createdAt: createdAt,
     driverAccreditedBy: driverAccreditedBy ?? this.driverAccreditedBy,
+    driverStats: driverStats,
   );
 }

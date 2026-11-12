@@ -34,7 +34,10 @@ class FinishedTripsDriversCard extends StatelessWidget {
             if (index > 0)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.h),
-                child: const Divider(height: 1, color: AppColors.lightGreyColor),
+                child: const Divider(
+                  height: 1,
+                  color: AppColors.lightGreyColor,
+                ),
               ),
             LocalizedLabel(
               text: trip.type == DeliveryTripType.pickup
@@ -45,7 +48,7 @@ class FinishedTripsDriversCard extends StatelessWidget {
               ),
             ),
             Gap(8.h),
-            DriverTile(name: trip.driverName, phone: trip.driverPhone),
+            DriverTile.fromTrip(trip),
             Gap(10.h),
             DriverAccreditationBadges(
               laundries: trip.driverAccreditedBy,

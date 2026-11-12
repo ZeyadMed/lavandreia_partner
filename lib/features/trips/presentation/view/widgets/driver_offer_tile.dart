@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:lavanderia_partner/core/common_widget/label.dart';
+import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/realtime/realtime_events.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
@@ -11,11 +11,13 @@ import 'package:lavanderia_partner/features/accredited_drivers/data/models/accre
 import 'package:lavanderia_partner/features/accredited_drivers/presentation/view/widgets/driver_accreditation_badges.dart';
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/models/vehicle_kind.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_profile_widgets.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// كارت عرض دليفري واحد: صورته واسمه وتحته ماركة وموديل وسنة مركبته وزرار
-/// الاتصال، وتحتهم نوع المركبة وبعده عن المغسلة والوقت المتوقع لوصوله،
+/// كارت عرض دليفري واحد: صورته واسمه وتحته رقمه وماركة وموديل وسنة مركبته
+/// وزرار الاتصال، وتحتهم تقييمه وعدد رحلاته ومن إمتى على التطبيق،
+/// وبعدهم نوع المركبة وبعده عن المغسلة والوقت المتوقع لوصوله،
 /// وبعدهم المغاسل اللي معتمداه،
 /// وتحت خالص زرار القبول والرفض
 /// من غير [onApprove] (الدليفري اللي اتوافق عليه) بيظهر [trailing] بدل الزراير
@@ -73,7 +75,7 @@ class DriverOfferTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              _DriverPhoto(
+              DriverPhoto(
                 imageUrl: request.driverImageUrl,
                 fallbackIcon: vehicle.icon,
               ),
@@ -87,6 +89,17 @@ class DriverOfferTile extends StatelessWidget {
                       maxLines: 1,
                       style: TextStyles.boldStyle(15, weight: FontWeight.w700),
                     ),
+                    if (request.driverPhone.isNotEmpty) ...[
+                      Gap(2.h),
+                      Label(
+                        text: request.driverPhone.forceLtr,
+                        maxLines: 1,
+                        style: TextStyles.darkRegular12.copyWith(
+                          color: AppColors.greyColor2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     if (vehicleDescription.isNotEmpty) ...[
                       Gap(3.h),
                       Label(
@@ -115,6 +128,10 @@ class DriverOfferTile extends StatelessWidget {
               ?trailing,
             ],
           ),
+          if (!request.driverStats.isEmpty) ...[
+            Gap(10.h),
+            DriverStatsRow(stats: request.driverStats),
+          ],
           Gap(10.h),
           Wrap(
             spacing: 6.w,
@@ -198,56 +215,6 @@ class DriverOfferTile extends StatelessWidget {
     }
     final text = km >= 10 ? '${km.round()}' : km.toStringAsFixed(1);
     return 'offer_distance_km'.tr(args: [text]);
-  }
-}
-
-/// صورة الدليفري، والضغط عليها بيفتحها بالحجم الكامل عشان المغسلة تتعرف عليه
-/// لو مفيش صورة أو فشلت بتظهر أيقونة مركبته
-class _DriverPhoto extends StatelessWidget {
-  final String? imageUrl;
-  final IconData fallbackIcon;
-
-  const _DriverPhoto({required this.imageUrl, required this.fallbackIcon});
-
-  @override
-  Widget build(BuildContext context) {
-    final placeholder = Container(
-      color: AppColors.primaryColor.withValues(alpha: 0.1),
-      child: Icon(fallbackIcon, color: AppColors.primaryColor, size: 24.sp),
-    );
-    final url = imageUrl;
-
-    return GestureDetector(
-      onTap: url == null ? null : () => _showFull(context, url),
-      child: ClipOval(
-        child: SizedBox(
-          width: 52.w,
-          height: 52.w,
-          child: url == null
-              ? placeholder
-              : CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) => placeholder,
-                  errorWidget: (_, _, _) => placeholder,
-                ),
-        ),
-      ),
-    );
-  }
-
-  /// الصورة بالحجم الكامل وتتكبر بالصوابع
-  void _showFull(BuildContext context, String url) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        insetPadding: EdgeInsets.all(16.w),
-        child: InteractiveViewer(
-          child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
-        ),
-      ),
-    );
   }
 }
 

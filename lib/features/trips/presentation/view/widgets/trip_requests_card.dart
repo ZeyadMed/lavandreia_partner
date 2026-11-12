@@ -16,6 +16,7 @@ import 'package:lavanderia_partner/features/trips/data/models/delivery_trip.dart
 import 'package:lavanderia_partner/features/trips/data/models/trip_request.dart';
 import 'package:lavanderia_partner/features/trips/data/trips_data_source.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_offer_tile.dart';
+import 'package:lavanderia_partner/features/trips/presentation/view/widgets/driver_search_indicator.dart';
 import 'package:lavanderia_partner/features/trips/presentation/view_model/trips_cubits.dart';
 
 /// كارت الدليفرية اللي طلبوا الرحلة، المغسلة بتوافق على واحد منهم
@@ -118,12 +119,19 @@ class _TripRequestsCardState extends State<TripRequestsCard> {
               );
             }
 
-            if (requests.isEmpty) {
+            if (requests.isEmpty && state.isFailure) {
               return _NoRequests(
-                text: state.isFailure
-                    ? 'driver_requests_load_failed'
-                    : 'no_driver_requests_yet',
+                text: 'driver_requests_load_failed',
                 onRefresh: _requestsCubit.fetchData,
+              );
+            }
+
+            // لسه محدش طلب الرحلة: بنعرض إن البحث شغال، والطلبات بتوصل
+            // بالـ realtime فالكارت بيتحدّث لوحده أول ما مندوب يطلب
+            if (requests.isEmpty) {
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 6.h),
+                child: DriverSearchIndicator(tripId: widget.trip.id),
               );
             }
 

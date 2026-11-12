@@ -8,6 +8,7 @@ import 'package:lavanderia_partner/core/extensions/string_extension.dart';
 import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/widgets/preparation_time.dart';
 
 /// الكارت الأبيض اللي بيلف كل قسم في صفحة التفاصيل
 class DetailsCard extends StatelessWidget {
@@ -388,41 +389,47 @@ class OrderMetaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final prepMinutes = order.preparationDurationMinutes;
+    final readyAt = order.promisedReadyAt;
     // المسافة ووقت التسليم مش جايين من السيرفر لسه، فبنخفيهم لو صفر
-    final hasDistance = order.distanceKm > 0;
-    final hasEta = order.estimatedHours > 0;
     // الدفع بيتطلب بعد المطابقة بس، وقبلها ملوش حالة
-    final hasPayment = order.paymentStatus != PaymentStatus.none;
+    final rows = <({String labelKey, Widget value})>[
+      (labelKey: 'order_number', value: _MetaValue(order.displayNumber)),
+      (labelKey: 'order_time', value: _MetaValue(order.displayDate(locale))),
+      if (order.distanceKm > 0)
+        (labelKey: 'distance', value: _MetaValue(order.displayDistance)),
+      if (order.estimatedHours > 0)
+        (labelKey: 'estimated_delivery', value: _MetaValue(order.displayEta)),
+      if (prepMinutes != null)
+        (
+          labelKey: 'preparation_duration',
+          value: _MetaValue(formatPreparationDuration(prepMinutes)),
+        ),
+      // موعد الجاهزية بييجي بعد ما المغسلة تأكّد الاستلام بس
+      if (readyAt != null)
+        (
+          labelKey: 'promised_ready_at',
+          value: _MetaValue(formatReadyAt(readyAt, locale)),
+        ),
+      if (order.isPreparing)
+        (labelKey: 'time_remaining', value: ReadyCountdownText(order: order)),
+      if (order.paymentStatus != PaymentStatus.none)
+        (
+          labelKey: 'payment_status',
+          value: _MetaValue(order.paymentStatus.labelKey.tr()),
+        ),
+    ];
 
     return DetailsCard(
       titleKey: 'order_info',
       child: Column(
         children: [
-          _MetaRow(labelKey: 'order_number', value: order.displayNumber),
-          _MetaRow(
-            labelKey: 'order_time',
-            value: order.displayDate(
-              Localizations.localeOf(context).languageCode,
-            ),
-            showDivider: hasDistance || hasEta || hasPayment,
-          ),
-          if (hasDistance)
+          for (final (index, row) in rows.indexed)
             _MetaRow(
-              labelKey: 'distance',
-              value: order.displayDistance,
-              showDivider: hasEta || hasPayment,
-            ),
-          if (hasEta)
-            _MetaRow(
-              labelKey: 'estimated_delivery',
-              value: order.displayEta,
-              showDivider: hasPayment,
-            ),
-          if (hasPayment)
-            _MetaRow(
-              labelKey: 'payment_status',
-              value: order.paymentStatus.labelKey.tr(),
-              showDivider: false,
+              labelKey: row.labelKey,
+              value: row.value,
+              showDivider: index < rows.length - 1,
             ),
         ],
       ),
@@ -430,10 +437,57 @@ class OrderMetaCard extends StatelessWidget {
   }
 }
 
+/// العدّاد التنازلي لموعد الجاهزية، وبيقلب أحمر "متأخر" لما الموعد يعدّي
+class ReadyCountdownText extends StatelessWidget {
+  final PartnerOrder order;
+  final double fontSize;
+
+  const ReadyCountdownText({super.key, required this.order, this.fontSize = 14});
+
+  @override
+  Widget build(BuildContext context) {
+    final readyAt = order.promisedReadyAt;
+    if (readyAt == null) return const SizedBox.shrink();
+    return CountdownBuilder(
+      target: readyAt,
+      builder: (context, remaining) {
+        final isLate = remaining.isNegative;
+        return Label(
+          text: (isLate ? 'overdue_by' : 'ready_in').tr(
+            args: [formatCountdown(remaining)],
+          ),
+          maxLines: 1,
+          style: TextStyles.boldStyle(
+            fontSize,
+            color: isLate ? AppColors.redColor2 : AppColors.primaryColor,
+            weight: FontWeight.w700,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// قيمة نصية عادية في سطر من كارت معلومات الطلب
+class _MetaValue extends StatelessWidget {
+  final String text;
+
+  const _MetaValue(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Label(
+      text: text,
+      maxLines: 1,
+      style: TextStyles.darkBold14.copyWith(fontWeight: FontWeight.w600),
+    );
+  }
+}
+
 /// سطر "اسم الحقل ... القيمة" في كارت معلومات الطلب
 class _MetaRow extends StatelessWidget {
   final String labelKey;
-  final String value;
+  final Widget value;
   final bool showDivider;
 
   const _MetaRow({
@@ -456,12 +510,11 @@ class _MetaRow extends StatelessWidget {
                   color: AppColors.greyColor4,
                 ),
               ),
-              const Spacer(),
-              Label(
-                text: value,
-                maxLines: 1,
-                style: TextStyles.darkBold14.copyWith(
-                  fontWeight: FontWeight.w600,
+              Gap(12.w),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: value,
                 ),
               ),
             ],

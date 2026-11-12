@@ -7,6 +7,7 @@ import 'package:lavanderia_partner/core/style/app_colors.dart';
 import 'package:lavanderia_partner/core/theme/text_styles.dart';
 import 'package:lavanderia_partner/core/widget/skeleton.dart';
 import 'package:lavanderia_partner/features/orders/data/models/partner_order.dart';
+import 'package:lavanderia_partner/features/orders/presentation/view/widgets/order_details_widgets.dart';
 
 /// كارت الطلب الواحد، نفسه في الرئيسية وفي صفحة الطلبات
 class OrderCard extends StatelessWidget {
@@ -102,6 +103,25 @@ class OrderCard extends StatelessWidget {
                         iconColor: AppColors.greyColor4,
                         text: order.displayDate(context.locale.languageCode),
                       ),
+                      if (order.isPreparing) ...[
+                        Gap(8.h),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 14.sp,
+                              color: AppColors.primaryColor,
+                            ),
+                            Gap(6.w),
+                            Flexible(
+                              child: ReadyCountdownText(
+                                order: order,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
